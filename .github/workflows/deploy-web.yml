@@ -4,14 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - "src/**"
-      - "public/**"
+      - "apps/web/**"
       - "package.json"
       - "pnpm-lock.yaml"
-      - "next.config.ts"
-      - "postcss.config.mjs"
-      - "tsconfig.json"
-      - "eslint.config.mjs"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/deploy-web.yml"
   workflow_dispatch:
 
@@ -33,17 +29,17 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
+      - run: pnpm --filter web lint
+      - run: pnpm --filter web typecheck
+      - run: pnpm --filter web test
+      - run: pnpm --filter web build
 
       - name: Create standalone web artifact
         run: |
-          mkdir -p .deploy/web/.next
-          cp -R .next/standalone/. .deploy/web/
-          cp -R .next/static .deploy/web/.next/static
-          if [ -d public ]; then cp -R public .deploy/web/public; fi
+          mkdir -p .deploy/web/apps/web/.next
+          cp -R apps/web/.next/standalone/. .deploy/web/
+          cp -R apps/web/.next/static .deploy/web/apps/web/.next/static
+          if [ -d apps/web/public ]; then cp -R apps/web/public .deploy/web/apps/web/public; fi
 
       - name: Azure login with OIDC
         uses: azure/login@v2

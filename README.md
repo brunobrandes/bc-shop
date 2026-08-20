@@ -1,10 +1,17 @@
 # BC-Shop
 
-BC-Shop is the production-oriented foundation for a computer and technology hardware storefront. Stage 0 includes a polished catalog, simple read-only APIs, and a server-only boundary for a future Atlas sales assistant.
+BC-Shop is a pnpm monorepo containing a computer and technology hardware storefront and its independent Azure Functions webhook entry point.
 
 ## Stack
 
-Next.js App Router, React, strict TypeScript, Tailwind CSS, pnpm, ESLint, Prettier, and Vitest.
+Next.js App Router, React, Azure Functions v4, strict TypeScript, Tailwind CSS, pnpm workspaces, ESLint, Prettier, and Vitest.
+
+## Repository layout
+
+- `apps/web` — Next.js storefront, APIs, Atlas client, contact flow, and tests
+- `apps/functions` — independently deployable Azure Functions app
+- `infra` — Azure Bicep and local deployment helper
+- `docs` — project documentation
 
 ## Getting started
 
@@ -12,8 +19,8 @@ Requires a current Node.js LTS release and pnpm.
 
 ```bash
 pnpm install
-cp .env.example .env.local
-pnpm dev
+cp apps/web/.env.example apps/web/.env.local
+pnpm --filter web dev
 ```
 
 Open `http://localhost:3000`. Atlas credentials are optional for the storefront and tests.
@@ -40,7 +47,10 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm start
+pnpm format:check
 ```
+
+The root scripts orchestrate the workspace. Package-specific checks can also be run with `pnpm --filter web <script>` and `pnpm --filter functions <script>`.
 
 ## APIs
 
@@ -52,7 +62,7 @@ pnpm start
 
 ## Atlas boundary
 
-`src/lib/atlas` is imported server-side only. It validates configuration when the integration is used, attaches the `api-key` header, applies a timeout, and normalizes network/upstream failures. `AtlasClient.initiateWebChat` maps exactly to the documented `POST /campaign-chat/:campaignId` operation. There is intentionally no public chat API or browser-to-Atlas call in Stage 0.
+`apps/web/src/lib/atlas` is imported server-side only. It validates configuration when the integration is used, attaches the `api-key` header, applies a timeout, and normalizes network/upstream failures. `AtlasClient.initiateWebChat` maps exactly to the documented `POST /campaign-chat/:campaignId` operation. There is intentionally no public chat API or browser-to-Atlas call in Stage 0.
 
 ## Stage 0 scope
 
@@ -60,7 +70,7 @@ There is no authentication, database, persisted cart, checkout, payments, CRM, a
 
 ## Azure deployment
 
-Both workloads use Node.js 24 on Linux. Bicep provisions one resource group, a Basic App Service plan, the Next.js Web App, the independent Function App, and the Function runtime storage account.
+Both workloads use Node.js 24 on Linux. Bicep provisions one resource group, a Basic App Service plan, the Next.js Web App, the independent Function App, and the Function runtime storage account. The App Service startup command runs the monorepo standalone entry point at `apps/web/server.js`.
 
 ### Local Azure setup
 
@@ -114,7 +124,7 @@ No `AZURE_CLIENT_SECRET`, publish profile, or service-principal password is used
 ### Deployment workflows
 
 - `deploy-infra.yml` is manually triggered. It logs in through OIDC, validates Bicep, and deploys the subscription-scope template.
-- `deploy-web.yml` validates the Next.js project, creates a standalone artifact, and deploys only that artifact to App Service when relevant web files change on `main`.
-- `deploy-functions.yml` validates and compiles `bc-shop-functions`, creates its production artifact, and deploys only that artifact to the Function App when Function files change on `main`.
+- `deploy-web.yml` validates `apps/web` from the root workspace, creates a standalone artifact, and deploys only that artifact to App Service when relevant web files change on `main`.
+- `deploy-functions.yml` validates and compiles `apps/functions` from the root workspace, creates its production artifact, and deploys only that artifact to the Function App when Function files change on `main`.
 
 Never commit real values from `.env.local`, `local.settings.json`, Azure credentials, Atlas credentials, webhook secrets, or publish profiles.

@@ -10,7 +10,7 @@ Establish a clean, runnable BC-Shop application with a credible computer storefr
 - `src/components/store` — retail presentation plus the isolated sales-assistant trigger.
 - `src/data/products.ts` — the only product dataset.
 - `src/lib/products` — small, testable catalog query functions shared by UI and APIs.
-- `src/lib/atlas` — server-only configuration, errors, types, and HTTP client.
+- `apps/web/src/lib/atlas` — server-only configuration, errors, types, and HTTP client.
 - `src/types` — shared product domain types.
 
 Server Components are used by default. The sales-assistant dialog is the only Client Component because it owns browser dialog state.

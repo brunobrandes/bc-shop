@@ -4,7 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - "bc-shop-functions/**"
+      - "apps/functions/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/deploy-functions.yml"
   workflow_dispatch:
 
@@ -24,20 +27,18 @@ jobs:
         with:
           node-version: "24.x"
           cache: pnpm
-          cache-dependency-path: bc-shop-functions/pnpm-lock.yaml
 
-      - run: pnpm --dir bc-shop-functions install --frozen-lockfile
-      - run: pnpm --dir bc-shop-functions typecheck
-      - run: pnpm --dir bc-shop-functions build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter functions typecheck
+      - run: pnpm --filter functions build
 
       - name: Create Function artifact
         run: |
-          mkdir -p .deploy/functions
-          cp bc-shop-functions/host.json .deploy/functions/
-          cp bc-shop-functions/package.json .deploy/functions/
-          cp bc-shop-functions/pnpm-lock.yaml .deploy/functions/
-          cp -R bc-shop-functions/dist .deploy/functions/dist
-          pnpm --dir .deploy/functions install --prod --frozen-lockfile
+          mkdir -p "$RUNNER_TEMP/functions-package"
+          cp apps/functions/host.json "$RUNNER_TEMP/functions-package/"
+          cp apps/functions/package.json "$RUNNER_TEMP/functions-package/"
+          cp -R apps/functions/dist "$RUNNER_TEMP/functions-package/dist"
+          pnpm --dir "$RUNNER_TEMP/functions-package" install --prod --no-lockfile
 
       - name: Azure login with OIDC
         uses: azure/login@v2
@@ -50,4 +51,4 @@ jobs:
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ vars.AZURE_FUNCTION_APP_NAME }}
-          package: .deploy/functions
+          package: ${{ runner.temp }}/functions-package

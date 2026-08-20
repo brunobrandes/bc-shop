@@ -17,4 +17,4 @@ local.settings.json
 *.publishsettings
 *.PublishSettings
 *.tsbuildinfo
-bc-shop-functions/dist/
+apps/functions/dist/

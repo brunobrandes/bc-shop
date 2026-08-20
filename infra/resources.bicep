@@ -59,7 +59,7 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
     serverFarmId: plan.id
     siteConfig: {
       alwaysOn: true
-      appCommandLine: 'node server.js'
+      appCommandLine: 'node apps/web/server.js'
       ftpsState: 'Disabled'
       http20Enabled: true
       linuxFxVersion: 'NODE|24-lts'

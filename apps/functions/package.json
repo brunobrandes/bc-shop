@@ -1,5 +1,5 @@
 {
-  "name": "bc-shop-functions",
+  "name": "functions",
   "version": "0.1.0",
   "private": true,
   "main": "dist/src/functions/*.js",
