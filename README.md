@@ -127,4 +127,6 @@ No `AZURE_CLIENT_SECRET`, publish profile, or service-principal password is used
 - `deploy-web.yml` validates `apps/web` from the root workspace, creates a standalone artifact, and deploys only that artifact to App Service when relevant web files change on `main`.
 - `deploy-functions.yml` validates and compiles `apps/functions` from the root workspace, creates its production artifact, and deploys only that artifact to the Function App when Function files change on `main`.
 
+Validation and build jobs run BC-Shop on Node.js 24. Azure deployment actions may independently report an action-runtime warning until their maintainers publish a newer supported major; that warning does not change the application or Azure runtime version.
+
 Never commit real values from `.env.local`, `local.settings.json`, Azure credentials, Atlas credentials, webhook secrets, or publish profiles.

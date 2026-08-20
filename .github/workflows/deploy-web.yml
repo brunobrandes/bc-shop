@@ -12,18 +12,18 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
-  validate-and-deploy:
+  validate-web:
+    name: Validate Web
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
         with:
           version: 10.15.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "24.x"
           cache: pnpm
@@ -32,6 +32,22 @@ jobs:
       - run: pnpm --filter web lint
       - run: pnpm --filter web typecheck
       - run: pnpm --filter web test
+
+  build-web:
+    name: Build Web
+    needs: validate-web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
       - run: pnpm --filter web build
 
       - name: Create standalone web artifact
@@ -40,9 +56,36 @@ jobs:
           cp -R apps/web/.next/standalone/. .deploy/web/
           cp -R apps/web/.next/static .deploy/web/apps/web/.next/static
           if [ -d apps/web/public ]; then cp -R apps/web/public .deploy/web/apps/web/public; fi
+          tar -czf "$RUNNER_TEMP/web-deploy.tar.gz" -C .deploy/web .
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-deploy
+          path: ${{ runner.temp }}/web-deploy.tar.gz
+          if-no-files-found: error
+
+  deploy-web:
+    name: Deploy Web
+    needs: build-web
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download web artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: web-deploy
+          path: artifact
+
+      - name: Extract web artifact
+        run: |
+          mkdir -p web-deploy
+          tar -xzf artifact/web-deploy.tar.gz -C web-deploy
 
       - name: Azure login with OIDC
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -52,4 +95,4 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ vars.AZURE_WEB_APP_NAME }}
-          package: .deploy/web
+          package: web-deploy

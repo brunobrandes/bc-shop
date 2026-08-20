@@ -12,24 +12,40 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
-  validate-and-deploy:
+  validate-functions:
+    name: Validate Functions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v4
         with:
           version: 10.15.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "24.x"
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter functions typecheck
+
+  build-functions:
+    name: Build Functions
+    needs: validate-functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
       - run: pnpm --filter functions build
 
       - name: Create Function artifact
@@ -39,9 +55,36 @@ jobs:
           cp apps/functions/package.json "$RUNNER_TEMP/functions-package/"
           cp -R apps/functions/dist "$RUNNER_TEMP/functions-package/dist"
           pnpm --dir "$RUNNER_TEMP/functions-package" install --prod --no-lockfile
+          tar -czf "$RUNNER_TEMP/functions-deploy.tar.gz" -C "$RUNNER_TEMP/functions-package" .
+
+      - name: Upload Functions artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: functions-deploy
+          path: ${{ runner.temp }}/functions-deploy.tar.gz
+          if-no-files-found: error
+
+  deploy-functions:
+    name: Deploy Functions
+    needs: build-functions
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download Functions artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: functions-deploy
+          path: artifact
+
+      - name: Extract Functions artifact
+        run: |
+          mkdir -p functions-deploy
+          tar -xzf artifact/functions-deploy.tar.gz -C functions-deploy
 
       - name: Azure login with OIDC
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -51,4 +94,4 @@ jobs:
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ vars.AZURE_FUNCTION_APP_NAME }}
-          package: ${{ runner.temp }}/functions-package
+          package: functions-deploy
