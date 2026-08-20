@@ -52,11 +52,10 @@ jobs:
 
       - name: Create Function artifact
         run: |
-          mkdir -p "$RUNNER_TEMP/functions-package"
-          cp apps/functions/host.json "$RUNNER_TEMP/functions-package/"
-          cp apps/functions/package.json "$RUNNER_TEMP/functions-package/"
-          cp -R apps/functions/dist "$RUNNER_TEMP/functions-package/dist"
-          pnpm --dir "$RUNNER_TEMP/functions-package" install --prod --no-lockfile
+          pnpm --filter functions deploy --prod --legacy "$RUNNER_TEMP/functions-package"
+          test -f "$RUNNER_TEMP/functions-package/host.json"
+          test -f "$RUNNER_TEMP/functions-package/dist/src/functions/atlas-call-completed.js"
+          test -f "$RUNNER_TEMP/functions-package/node_modules/@azure/functions/package.json"
           tar -czf "$RUNNER_TEMP/functions-deploy.tar.gz" -C "$RUNNER_TEMP/functions-package" .
 
       - name: Upload Functions artifact
@@ -97,3 +96,25 @@ jobs:
         with:
           app-name: ${{ vars.AZURE_FUNCTION_APP_NAME }}
           package: functions-deploy
+
+      - name: Verify Function registration
+        shell: bash
+        run: |
+          for attempt in {1..12}; do
+            function_name="$(az functionapp function list \
+              --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+              --name "${{ vars.AZURE_FUNCTION_APP_NAME }}" \
+              --query "[?contains(name, '/atlas-call-completed')].name | [0]" \
+              --output tsv)"
+
+            if [[ -n "$function_name" ]]; then
+              echo "Function registration verified."
+              exit 0
+            fi
+
+            echo "Waiting for Function registration (attempt $attempt/12)..."
+            sleep 10
+          done
+
+          echo "Function atlas-call-completed was not registered after deployment."
+          exit 1
