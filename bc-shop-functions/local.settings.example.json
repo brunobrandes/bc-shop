@@ -1,0 +1,8 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "ATLAS_WEBHOOK_SECRET": "replace-with-a-long-random-secret"
+  }
+}

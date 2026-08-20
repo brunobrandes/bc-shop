@@ -1,0 +1,21 @@
+{
+  "name": "bc-shop-functions",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/src/functions/*.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

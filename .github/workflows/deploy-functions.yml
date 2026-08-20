@@ -1,0 +1,53 @@
+name: Deploy BC-Shop Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "bc-shop-functions/**"
+      - ".github/workflows/deploy-functions.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: pnpm
+          cache-dependency-path: bc-shop-functions/pnpm-lock.yaml
+
+      - run: pnpm --dir bc-shop-functions install --frozen-lockfile
+      - run: pnpm --dir bc-shop-functions typecheck
+      - run: pnpm --dir bc-shop-functions build
+
+      - name: Create Function artifact
+        run: |
+          mkdir -p .deploy/functions
+          cp bc-shop-functions/host.json .deploy/functions/
+          cp bc-shop-functions/package.json .deploy/functions/
+          cp bc-shop-functions/pnpm-lock.yaml .deploy/functions/
+          cp -R bc-shop-functions/dist .deploy/functions/dist
+          pnpm --dir .deploy/functions install --prod --frozen-lockfile
+
+      - name: Azure login with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Function App
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ vars.AZURE_FUNCTION_APP_NAME }}
+          package: .deploy/functions
