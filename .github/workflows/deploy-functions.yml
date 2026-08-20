@@ -31,6 +31,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter functions typecheck
+      - run: pnpm --filter functions test
 
   build-functions:
     name: Build Functions

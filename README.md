@@ -25,7 +25,7 @@ pnpm --filter web dev
 
 Open `http://localhost:3000`. Atlas credentials are optional for the storefront and tests.
 
-The call-request flow is available in English at `/en/contact` and Portuguese at `/pt/contact`. `/contact` redirects to the English version.
+The storefront is English-only at `/`, and the call-request flow is available at `/contact`.
 
 ## Environment
 
@@ -73,7 +73,7 @@ There is no authentication, database, persisted cart, checkout, payments, CRM, a
 The two workloads deploy independently:
 
 - `apps/web` runs as a dynamic Next.js application on Firebase App Hosting. SSR, App Router route handlers, and server-side environment variables are preserved.
-- `apps/functions` runs on Azure Functions Flex Consumption FC1. Azure Bicep provisions only its resource group, storage and private deployment container, FC1 plan, and Function App.
+- `apps/functions` runs on Azure Functions Flex Consumption FC1. Azure Bicep provisions its resource group, storage primitives, FC1 plan, and Function App.
 
 There is no Azure App Service, Azure Web App, or Container Apps dependency for the storefront.
 
@@ -111,7 +111,9 @@ The webhook remains available at:
 POST https://<function-app>.azurewebsites.net/api/webhooks/atlas/call-completed/{secret}
 ```
 
-Azure Bicep creates an FC1 Linux Function App using Node.js 24, its runtime storage account, and its deployment package container. `ATLAS_WEBHOOK_SECRET` is the only application secret configured by this Azure deployment.
+Azure Bicep creates an FC1 Linux Function App using Node.js 24, its runtime storage account, deployment package container, Atlas call Table, private inbox/transcript containers, and processing/poison queues. `ATLAS_WEBHOOK_SECRET` is the only application secret configured by this Azure deployment.
+
+The webhook acknowledges Atlas only after a durable Storage handoff. Queue-trigger processing then persists call metadata and transcript with native retries and deterministic `callId` idempotency. See [Atlas call-completed ingestion](docs/architecture/atlas-call-ingestion.md).
 
 GitHub Actions authenticates to Azure through OIDC and publishes the compiled Function artifact using One Deploy support in `Azure/functions-action`. No client secret or publish profile is used.
 

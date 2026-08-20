@@ -1,36 +1,62 @@
 import { describe, expect, it } from "vitest";
+import { normalizePhone } from "./countries";
 import {
   buildCustomerInfo,
-  normalizeBrazilianPhone,
   validateScheduleCall,
   zonedDateTimeToIso,
 } from "./schedule-call";
 
 const validInput = {
   name: "Maria Silva",
-  phone: "(11) 99999-8888",
-  reason: "Ajuda para escolher um computador",
-  message: "Preciso usar AutoCAD.",
+  country: "US",
+  phone: "(415) 555-2671",
+  reason: "Help choosing a computer",
+  message: "I need to use AutoCAD.",
   mode: "scheduled",
   scheduledDate: "2026-08-21",
   scheduledTime: "10:00",
   timezone: "America/Sao_Paulo",
-  locale: "pt",
-  currency: "BRL",
+  currency: "USD",
   consent: true,
 };
 
 describe("call scheduling validation", () => {
   it.each([
-    ["(11) 99999-8888", "+5511999998888"],
-    ["+55 11 3333-2222", "+551133332222"],
-    ["005511999998888", "+5511999998888"],
-  ])("normalizes %s", (input, expected) =>
-    expect(normalizeBrazilianPhone(input)).toBe(expected),
-  );
+    ["US", "(415) 555-2671", "+14155552671"],
+    ["US", "+1 212 555 0198", "+12125550198"],
+  ] as const)("normalizes a %s phone", (country, input, expected) => {
+    expect(normalizePhone(input, country)).toBe(expected);
+  });
 
-  it("rejects invalid Brazilian phone numbers", () =>
-    expect(normalizeBrazilianPhone("1234")).toBeUndefined());
+  it("requires a country", () => {
+    const result = validateScheduleCall(
+      { ...validInput, country: undefined },
+      new Date("2026-08-20T12:00:00Z"),
+    );
+    expect(result).toEqual({
+      success: false,
+      message: "Select a valid country.",
+    });
+  });
+
+  it("accepts United States phone numbers", () => {
+    const result = validateScheduleCall(
+      validInput,
+      new Date("2026-08-20T12:00:00Z"),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it.each(["CA", "BR", "GB", "PT", "ES"])(
+    "rejects unsupported country %s",
+    (country) => {
+      const result = validateScheduleCall(
+        { ...validInput, country },
+        new Date("2026-08-20T12:00:00Z"),
+      );
+      expect(result).toMatchObject({ success: false });
+    },
+  );
 
   it("maps São Paulo wall-clock time to an ISO instant", () => {
     const result = validateScheduleCall(
@@ -40,35 +66,24 @@ describe("call scheduling validation", () => {
     expect(result).toMatchObject({
       success: true,
       data: {
-        phone: "+5511999998888",
+        phone: "+14155552671",
         scheduledDate: "2026-08-21T13:00:00.000Z",
       },
     });
   });
 
-  it("accepts the English contact flow reasons", () => {
+  it("does not require scheduling fields for immediate mode", () => {
     const result = validateScheduleCall(
-      { ...validInput, reason: "Help choosing a computer" },
+      {
+        ...validInput,
+        mode: "now",
+        scheduledDate: undefined,
+        scheduledTime: undefined,
+        timezone: undefined,
+      },
       new Date("2026-08-20T12:00:00Z"),
     );
-    expect(result).toMatchObject({
-      success: true,
-      data: { reason: "Help choosing a computer" },
-    });
-  });
-
-  it("does not require date or time for immediate mode", () => {
-    const { scheduledDate, scheduledTime, ...input } = validInput;
-    void scheduledDate;
-    void scheduledTime;
-    const result = validateScheduleCall(
-      { ...input, mode: "now" },
-      new Date("2026-08-20T12:00:00Z"),
-    );
-    expect(result).toMatchObject({
-      success: true,
-      data: { mode: "now" },
-    });
+    expect(result).toMatchObject({ success: true, data: { mode: "now" } });
     if (result.success) expect(result.data.scheduledDate).toBeUndefined();
   });
 
@@ -77,8 +92,10 @@ describe("call scheduling validation", () => {
       { ...validInput, scheduledDate: undefined, scheduledTime: undefined },
       new Date("2026-08-20T12:00:00Z"),
     );
-    expect(result).toMatchObject({ success: false });
-    if (!result.success) expect(result.message).toContain("futuros");
+    expect(result).toEqual({
+      success: false,
+      message: "Choose a future date and time.",
+    });
   });
 
   it("rejects an unsupported timezone", () => {
@@ -89,7 +106,7 @@ describe("call scheduling validation", () => {
     expect(result).toMatchObject({ success: false });
   });
 
-  it("converts another supported timezone to UTC", () => {
+  it("converts New York wall-clock time to UTC", () => {
     const result = validateScheduleCall(
       { ...validInput, timezone: "America/New_York" },
       new Date("2026-08-20T12:00:00Z"),
@@ -100,7 +117,7 @@ describe("call scheduling validation", () => {
     });
   });
 
-  it("uses the New York DST offset for the selected date", () => {
+  it("uses the selected date's DST offset", () => {
     expect(zonedDateTimeToIso("2026-01-21", "10:00", "America/New_York")).toBe(
       "2026-01-21T15:00:00.000Z",
     );
@@ -115,26 +132,18 @@ describe("call scheduling validation", () => {
     ).toBeUndefined();
   });
 
-  it.each([
-    [{ ...validInput, name: "" }, "nome"],
-    [{ ...validInput, reason: "Invalid" }, "motivo"],
-    [{ ...validInput, consent: false }, "consentimento"],
-    [{ ...validInput, scheduledDate: "2026-08-19" }, "futuros"],
-  ])("rejects invalid input", (input, error) => {
-    const result = validateScheduleCall(
-      input,
-      new Date("2026-08-20T12:00:00Z"),
+  it("builds Atlas context with country and without language", () => {
+    const context = buildCustomerInfo(
+      "US",
+      "USD",
+      "Quote request",
+      "I need five computers.",
     );
-    expect(result).toMatchObject({ success: false });
-    if (!result.success) expect(result.message).toContain(error);
+    expect(context).toBe(
+      "Source: BC-Shop website\nCountry: US\nCurrency: USD\nReason: Quote request\nCustomer message: I need five computers.",
+    );
+    expect(context).not.toContain("Language");
   });
-
-  it("builds concise Atlas customer context", () =>
-    expect(
-      buildCustomerInfo("Orçamento", "Quero cinco computadores.", "pt", "BRL"),
-    ).toBe(
-      "Source: BC-Shop website\nLanguage: pt\nCurrency: BRL\nReason: Orçamento\nCustomer message: Quero cinco computadores.",
-    ));
 
   it("rejects an invalid currency", () => {
     const result = validateScheduleCall(

@@ -1,0 +1,232 @@
+{
+  "info": {
+    "_postman_id": "c4e2d0bb-1d24-4f92-ac31-6e59686735b1",
+    "name": "BC-Shop — Azure Functions webhook E2E",
+    "description": "Contract tests for the deployed YourAtlas call_completed webhook. Uses synthetic events and never calls Atlas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "invalidWebhookSecret",
+      "value": "intentionally-invalid-secret"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Reject invalid route secret",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"callId\": \"e2e-invalid-secret\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{functionBaseUrl}}/api/webhooks/atlas/call-completed/{{invalidWebhookSecret}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('returns 401', () => pm.response.to.have.status(401));",
+                  "pm.test('does not expose a secret', () => {",
+                  "  const body = pm.response.text();",
+                  "  pm.expect(body).not.to.include(pm.environment.get('atlasWebhookSecret'));",
+                  "  pm.expect(body).not.to.include(pm.collectionVariables.get('invalidWebhookSecret'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Input validation",
+      "item": [
+        {
+          "name": "Reject malformed JSON",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{not-json"
+            },
+            "url": "{{functionBaseUrl}}/api/webhooks/atlas/call-completed/{{atlasWebhookSecret}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('returns safe 400', () => pm.response.to.have.status(400));",
+                  "pm.test('does not return a stack trace', () => pm.expect(pm.response.text()).not.to.match(/stack|at\\s+\\w+/i));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject empty event array",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{functionBaseUrl}}/api/webhooks/atlas/call-completed/{{atlasWebhookSecret}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('returns 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject event without callId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{functionBaseUrl}}/api/webhooks/atlas/call-completed/{{atlasWebhookSecret}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('returns 400', () => pm.response.to.have.status(400));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Valid Atlas payloads",
+      "item": [
+        {
+          "name": "Accept one call_completed event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"callId\": \"e2e-single-call-001\",\n  \"status\": \"completed\",\n  \"endedReason\": \"customer-ended-call\",\n  \"durationSeconds\": 42,\n  \"callSummary\": \"Synthetic E2E webhook event.\",\n  \"callTranscript\": \"This field must not be logged.\",\n  \"customerNumber\": \"+15555550100\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{functionBaseUrl}}/api/webhooks/atlas/call-completed/{{atlasWebhookSecret}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('returns 200', () => pm.response.to.have.status(200));",
+                  "pm.test('acknowledges receipt', () => pm.expect(pm.response.json()).to.eql({ received: true }));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Accept an array of call_completed events",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"callId\": \"e2e-array-call-001\",\n    \"status\": \"completed\",\n    \"durationSeconds\": 12\n  },\n  {\n    \"callId\": \"e2e-array-call-002\",\n    \"status\": \"completed\",\n    \"endedReason\": \"agent-ended-call\",\n    \"callSummary\": \"Second synthetic E2E event.\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{functionBaseUrl}}/api/webhooks/atlas/call-completed/{{atlasWebhookSecret}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('returns 200', () => pm.response.to.have.status(200));",
+                  "pm.test('acknowledges receipt', () => pm.expect(pm.response.json()).to.eql({ received: true }));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

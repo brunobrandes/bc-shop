@@ -1,13 +1,17 @@
-import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { localeCookieName, resolveLocale } from "@/lib/i18n/locale";
+import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { ContactPageContent } from "@/components/contact/contact-page";
+import { currencyCookieName, resolveCurrency } from "@/lib/currency/currency";
+
+export const metadata: Metadata = {
+  title: "Request a call | BC-Shop",
+  description:
+    "Speak with a BC-Shop computer specialist now or schedule a call.",
+};
 
 export default async function ContactPage() {
-  const cookieStore = await cookies();
-  const headerStore = await headers();
-  const locale = resolveLocale(
-    cookieStore.get(localeCookieName)?.value,
-    headerStore.get("accept-language") ?? undefined,
+  const currency = resolveCurrency(
+    (await cookies()).get(currencyCookieName)?.value,
   );
-  redirect(`/${locale}/contact`);
+  return <ContactPageContent currency={currency} />;
 }

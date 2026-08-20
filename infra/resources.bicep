@@ -7,6 +7,10 @@ param atlasWebhookSecret string
 var planName = 'plan-bc-shop-functions-flex'
 var storageAccountName = take('st${uniqueString(subscription().id, resourceGroup().id)}', 24)
 var deploymentContainerName = 'function-releases'
+var atlasInboxContainerName = 'atlas-webhook-inbox'
+var atlasTranscriptsContainerName = 'atlas-transcripts'
+var atlasProcessingQueueName = 'atlas-call-completed'
+var atlasCallsTableName = 'atlascalls'
 
 resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: planName
@@ -48,6 +52,47 @@ resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/con
   }
 }
 
+resource atlasInboxContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: atlasInboxContainerName
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
+resource atlasTranscriptsContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: atlasTranscriptsContainerName
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource atlasProcessingQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: queueService
+  name: atlasProcessingQueueName
+}
+
+resource atlasPoisonQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: queueService
+  name: '${atlasProcessingQueueName}-poison'
+}
+
+resource tableService 'Microsoft.Storage/storageAccounts/tableServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource atlasCallsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: atlasCallsTableName
+}
+
 resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   name: functionAppName
   location: location
@@ -71,6 +116,22 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'ATLAS_WEBHOOK_SECRET'
           value: atlasWebhookSecret
+        }
+        {
+          name: 'ATLAS_CALLS_TABLE'
+          value: atlasCallsTableName
+        }
+        {
+          name: 'ATLAS_INBOX_CONTAINER'
+          value: atlasInboxContainerName
+        }
+        {
+          name: 'ATLAS_TRANSCRIPTS_CONTAINER'
+          value: atlasTranscriptsContainerName
+        }
+        {
+          name: 'ATLAS_PROCESSING_QUEUE'
+          value: atlasProcessingQueueName
         }
       ]
     }

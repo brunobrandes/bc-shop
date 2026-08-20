@@ -5,14 +5,12 @@ import {
   type InvocationContext,
 } from "@azure/functions";
 import { timingSafeEqual } from "node:crypto";
-
-type AtlasCallCompletedLog = {
-  callId: string;
-  status?: string;
-  endedReason?: string;
-  durationSeconds?: number;
-  callSummary?: string;
-};
+import { acceptAtlasEvents } from "../services/atlas-call-processing";
+import {
+  getAtlasCallStorage,
+  type AtlasCallCompletedEvent,
+  type AtlasCallStorage,
+} from "../storage/atlas-call-storage";
 
 function secretsMatch(
   received: string | undefined,
@@ -27,16 +25,27 @@ function secretsMatch(
   );
 }
 
-function extractEvent(value: unknown): AtlasCallCompletedLog | undefined {
+export function extractEvent(
+  value: unknown,
+): AtlasCallCompletedEvent | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value))
     return undefined;
 
   const event = value as Record<string, unknown>;
-  if (typeof event.callId !== "string" || !event.callId.trim())
+  if (
+    typeof event.callId !== "string" ||
+    !event.callId.trim() ||
+    event.callId.length > 256
+  )
+    return undefined;
+  if (
+    event.callTranscript !== undefined &&
+    typeof event.callTranscript !== "string"
+  )
     return undefined;
 
   return {
-    callId: event.callId,
+    callId: event.callId.trim(),
     ...(typeof event.status === "string" ? { status: event.status } : {}),
     ...(typeof event.endedReason === "string"
       ? { endedReason: event.endedReason }
@@ -48,37 +57,64 @@ function extractEvent(value: unknown): AtlasCallCompletedLog | undefined {
     ...(typeof event.callSummary === "string"
       ? { callSummary: event.callSummary }
       : {}),
+    callTranscript:
+      typeof event.callTranscript === "string" ? event.callTranscript : "",
+  };
+}
+
+export function createAtlasCallCompletedHandler(
+  storageSource: AtlasCallStorage | (() => AtlasCallStorage),
+  webhookSecret: string | undefined,
+) {
+  return async function atlasCallCompleted(
+    request: HttpRequest,
+    context: InvocationContext,
+  ): Promise<HttpResponseInit> {
+    if (!secretsMatch(request.params.secret, webhookSecret)) {
+      return { status: 401, jsonBody: { error: "Unauthorized" } };
+    }
+
+    let payload: unknown;
+    try {
+      payload = await request.json();
+    } catch {
+      return { status: 400, jsonBody: { error: "Invalid request" } };
+    }
+
+    const rawEvents = Array.isArray(payload) ? payload : [payload];
+    if (rawEvents.length === 0)
+      return { status: 400, jsonBody: { error: "Invalid payload" } };
+
+    const events = rawEvents.map(extractEvent);
+    if (events.some((event) => event === undefined))
+      return { status: 400, jsonBody: { error: "Invalid payload" } };
+
+    try {
+      const storage =
+        typeof storageSource === "function" ? storageSource() : storageSource;
+      await acceptAtlasEvents(events as AtlasCallCompletedEvent[], storage);
+    } catch {
+      return { status: 503, jsonBody: { error: "Webhook not accepted" } };
+    }
+
+    for (const event of events as AtlasCallCompletedEvent[]) {
+      context.log("Atlas call_completed durably accepted", {
+        callId: event.callId,
+      });
+    }
+
+    return { status: 200, jsonBody: { received: true } };
   };
 }
 
 export async function atlasCallCompleted(
   request: HttpRequest,
   context: InvocationContext,
-): Promise<HttpResponseInit> {
-  if (!secretsMatch(request.params.secret, process.env.ATLAS_WEBHOOK_SECRET)) {
-    return { status: 401, jsonBody: { error: "Unauthorized" } };
-  }
-
-  let payload: unknown;
-  try {
-    payload = await request.json();
-  } catch {
-    return { status: 400, jsonBody: { error: "Invalid request" } };
-  }
-
-  const rawEvents = Array.isArray(payload) ? payload : [payload];
-  if (rawEvents.length === 0)
-    return { status: 400, jsonBody: { error: "Invalid payload" } };
-
-  const events = rawEvents.map(extractEvent);
-  if (events.some((event) => event === undefined))
-    return { status: 400, jsonBody: { error: "Invalid payload" } };
-
-  for (const event of events as AtlasCallCompletedLog[]) {
-    context.log("Atlas call_completed received", event);
-  }
-
-  return { status: 200, jsonBody: { received: true } };
+) {
+  return createAtlasCallCompletedHandler(
+    getAtlasCallStorage,
+    process.env.ATLAS_WEBHOOK_SECRET,
+  )(request, context);
 }
 
 app.http("atlas-call-completed", {

@@ -9,13 +9,13 @@ vi.mock("@/lib/atlas/config", () => ({
 import { POST } from "./route";
 
 const baseBody = {
-  name: "Maria Silva",
-  phone: "(11) 99999-8888",
-  reason: "Orçamento",
-  message: "Preciso de cinco computadores.",
+  name: "Mary Smith",
+  country: "US",
+  phone: "(415) 555-2671",
+  reason: "Quote request",
+  message: "I need five computers.",
   consent: true,
-  locale: "pt",
-  currency: "BRL",
+  currency: "USD",
 };
 
 function request(payload: unknown) {
@@ -38,10 +38,10 @@ describe("POST /api/contact/call", () => {
     expect(response.status).toBe(200);
     expect(scheduleCall).toHaveBeenCalledWith({
       campaignId: "campaign-1",
-      customerPhoneNumber: "+5511999998888",
-      customerName: "Maria Silva",
+      customerPhoneNumber: "+14155552671",
+      customerName: "Mary Smith",
       customerInfo:
-        "Source: BC-Shop website\nLanguage: pt\nCurrency: BRL\nReason: Orçamento\nCustomer message: Preciso de cinco computadores.",
+        "Source: BC-Shop website\nCountry: US\nCurrency: USD\nReason: Quote request\nCustomer message: I need five computers.",
     });
     expect(scheduleCall.mock.calls[0][0]).not.toHaveProperty("scheduledDate");
   });

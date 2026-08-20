@@ -1,53 +1,26 @@
 import Link from "next/link";
-import { LocaleSwitcher } from "./locale-switcher";
 import { CurrencySelector } from "./currency-selector";
 import { SalesAssistantTrigger } from "./sales-assistant-trigger";
-import type { Locale } from "@/lib/i18n/locale";
 import type { SupportedCurrency } from "@/lib/currency/currency";
 
-export function Header({
-  locale = "pt",
-  currency,
-}: {
-  locale?: Locale;
-  currency: SupportedCurrency;
-}) {
-  const home = `/${locale}`;
-  const contact = `/${locale}/contact`;
+export function Header({ currency }: { currency: SupportedCurrency }) {
   return (
     <header className="site-header">
       <div className="shell site-header__inner">
-        <Link
-          href={home}
-          className="brand"
-          aria-label={
-            locale === "en" ? "BC-Shop, home" : "BC-Shop, página inicial"
-          }
-        >
+        <Link href="/" className="brand" aria-label="BC-Shop, home">
           <span>BC</span> Shop
         </Link>
-        <nav
-          aria-label={
-            locale === "en" ? "Main navigation" : "Navegação principal"
-          }
-        >
-          <Link href={`${home}#computadores`}>
-            {locale === "en" ? "Computers" : "Computadores"}
-          </Link>
-          <Link href={`${home}#categorias`}>
-            {locale === "en" ? "Categories" : "Categorias"}
-          </Link>
-          <Link href={contact}>
-            {locale === "en" ? "Contact" : "Atendimento"}
-          </Link>
+        <nav aria-label="Main navigation">
+          <Link href="/#computers">Computers</Link>
+          <Link href="/#categories">Categories</Link>
+          <Link href="/contact">Contact</Link>
         </nav>
         <div className="site-header__actions">
-          <LocaleSwitcher locale={locale} />
           <CurrencySelector currency={currency} />
           <button
             className="cart-button"
             type="button"
-            aria-label={locale === "en" ? "Cart, empty" : "Carrinho, vazio"}
+            aria-label="Cart, empty"
           >
             <svg
               viewBox="0 0 24 24"
@@ -64,7 +37,7 @@ export function Header({
             </svg>
             <span>0</span>
           </button>
-          <SalesAssistantTrigger locale={locale} />
+          <SalesAssistantTrigger />
         </div>
       </div>
     </header>

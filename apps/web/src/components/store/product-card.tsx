@@ -1,21 +1,12 @@
 import { ComputerVisual } from "./computer-visual";
 import type { Product } from "@/types/product";
-import type { Locale } from "@/lib/i18n/locale";
 import { formatMoney, type SupportedCurrency } from "@/lib/currency/currency";
 
 const labels = {
-  pt: {
-    home: "Casa",
-    work: "Trabalho",
-    gaming: "Gaming",
-    workstation: "Workstation",
-  },
-  en: {
-    home: "Home",
-    work: "Work",
-    gaming: "Gaming",
-    workstation: "Workstation",
-  },
+  home: "Home",
+  work: "Work",
+  gaming: "Gaming",
+  workstation: "Workstation",
 } as const;
 const englishDescriptions: Record<string, string> = {
   "bc-home-14":
@@ -31,34 +22,27 @@ const englishDescriptions: Record<string, string> = {
 
 export function ProductCard({
   product,
-  locale,
   currency,
 }: {
   product: Product;
-  locale: Locale;
   currency: SupportedCurrency;
 }) {
-  const description =
-    locale === "en"
-      ? englishDescriptions[product.id]
-      : product.shortDescription;
+  const description = englishDescriptions[product.id];
   return (
     <article className="product-card">
       <div className="product-card__visual">
         {product.featured && (
-          <span className="product-card__badge">
-            {locale === "en" ? "Most versatile" : "Mais versátil"}
-          </span>
+          <span className="product-card__badge">Most versatile</span>
         )}
         <ComputerVisual category={product.category} />
       </div>
       <div className="product-card__body">
         <span className="product-card__category">
-          {labels[locale][product.category]}
+          {labels[product.category]}
         </span>
         <h3>{product.name}</h3>
         <p>{description}</p>
-        <ul aria-label={locale === "en" ? "Specifications" : "Especificações"}>
+        <ul aria-label="Specifications">
           <li>{product.specs.cpu}</li>
           <li>{product.specs.memory} RAM</li>
           <li>{product.specs.storage}</li>
@@ -66,14 +50,11 @@ export function ProductCard({
         </ul>
         <div className="product-card__footer">
           <div>
-            <small>{locale === "en" ? "Starting at" : "A partir de"}</small>
-            <strong>{formatMoney(product.price, currency, locale)}</strong>
+            <small>Starting at</small>
+            <strong>{formatMoney(product.price, currency)}</strong>
           </div>
-          <button
-            type="button"
-            aria-label={`${locale === "en" ? "View details for" : "Ver detalhes de"} ${product.name}`}
-          >
-            {locale === "en" ? "View details" : "Ver detalhes"} <span>→</span>
+          <button type="button" aria-label={`View details for ${product.name}`}>
+            View details <span>→</span>
           </button>
         </div>
       </div>

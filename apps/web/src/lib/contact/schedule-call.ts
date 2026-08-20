@@ -1,18 +1,14 @@
-import { isLocale, type Locale } from "@/lib/i18n/locale";
+import {
+  isSupportedCountry,
+  normalizePhone,
+  type SupportedCountry,
+} from "@/lib/contact/countries";
 import {
   isSupportedCurrency,
   type SupportedCurrency,
 } from "@/lib/currency/currency";
 
 export const contactReasons = [
-  "Dúvida sobre produto",
-  "Ajuda para escolher um computador",
-  "Orçamento",
-  "Dúvida comercial",
-  "Outro",
-] as const;
-
-export const englishContactReasons = [
   "Product question",
   "Help choosing a computer",
   "Quote request",
@@ -21,8 +17,6 @@ export const englishContactReasons = [
 ] as const;
 
 export type ContactReason = (typeof contactReasons)[number];
-export type EnglishContactReason = (typeof englishContactReasons)[number];
-export type SupportedContactReason = ContactReason | EnglishContactReason;
 export const supportedTimezones = [
   "America/Sao_Paulo",
   "America/New_York",
@@ -35,6 +29,7 @@ export type SupportedTimezone = (typeof supportedTimezones)[number];
 
 export type ScheduleCallRequest = {
   name?: unknown;
+  country?: unknown;
   phone?: unknown;
   reason?: unknown;
   message?: unknown;
@@ -43,41 +38,24 @@ export type ScheduleCallRequest = {
   scheduledTime?: unknown;
   consent?: unknown;
   timezone?: unknown;
-  locale?: unknown;
   currency?: unknown;
 };
 
 export type ValidatedScheduleCall = {
   name: string;
+  country: SupportedCountry;
   phone: string;
-  reason: SupportedContactReason;
+  reason: ContactReason;
   message: string;
   mode: "now" | "scheduled";
   scheduledDate?: string;
   timezone?: SupportedTimezone;
-  locale: Locale;
   currency: SupportedCurrency;
 };
 
 export type ValidationResult =
   | { success: true; data: ValidatedScheduleCall }
   | { success: false; message: string };
-
-export function normalizeBrazilianPhone(value: string): string | undefined {
-  let digits = value.replace(/\D/g, "");
-  if (digits.startsWith("00")) digits = digits.slice(2);
-  if (digits.startsWith("55")) digits = digits.slice(2);
-  if (digits.length !== 10 && digits.length !== 11) return undefined;
-  const areaCode = Number(digits.slice(0, 2));
-  const subscriber = digits.slice(2);
-  if (areaCode < 11 || areaCode > 99) return undefined;
-  if (
-    (subscriber.length === 9 && subscriber[0] !== "9") ||
-    (subscriber.length === 8 && !/[2-5]/.test(subscriber[0]))
-  )
-    return undefined;
-  return `+55${digits}`;
-}
 
 function getTimeZoneOffset(
   instant: Date,
@@ -154,72 +132,37 @@ export function validateScheduleCall(
   input: ScheduleCallRequest,
   now = new Date(),
 ): ValidationResult {
-  if (!isLocale(input.locale))
-    return { success: false, message: "Selecione um idioma válido." };
-  const errors =
-    input.locale === "en"
-      ? {
-          name: "Enter a valid name.",
-          phone: "Enter a valid Brazilian phone number.",
-          reason: "Select a valid contact reason.",
-          message: "The message must be 1,000 characters or less.",
-          mode: "Select a valid call option.",
-          timezone: "Select a valid time zone.",
-          future: "Choose a future date and time.",
-          consent: "Confirm your consent to receive the call.",
-        }
-      : {
-          name: "Informe um nome válido.",
-          phone: "Informe um telefone brasileiro válido.",
-          reason: "Selecione um motivo válido.",
-          message: "A mensagem deve ter até 1000 caracteres.",
-          mode: "Selecione uma opção de contato válida.",
-          timezone: "Selecione um fuso horário válido.",
-          future: "Escolha uma data e horário futuros.",
-          consent: "Confirme o consentimento para receber a ligação.",
-        };
   if (!isSupportedCurrency(input.currency))
-    return {
-      success: false,
-      message:
-        input.locale === "en"
-          ? "Select a valid currency."
-          : "Selecione uma moeda válida.",
-    };
+    return { success: false, message: "Select a valid currency." };
+
   const name = typeof input.name === "string" ? input.name.trim() : "";
   if (!name || name.length > 100)
-    return { success: false, message: errors.name };
+    return { success: false, message: "Enter a valid name." };
+
+  if (!isSupportedCountry(input.country))
+    return { success: false, message: "Select a valid country." };
 
   const phone =
     typeof input.phone === "string"
-      ? normalizeBrazilianPhone(input.phone)
+      ? normalizePhone(input.phone, input.country)
       : undefined;
-  if (!phone)
-    return {
-      success: false,
-      message: errors.phone,
-    };
+  if (!phone) return { success: false, message: "Enter a valid phone number." };
 
   if (
     typeof input.reason !== "string" ||
-    ![...contactReasons, ...englishContactReasons].includes(
-      input.reason as ContactReason,
-    )
+    !contactReasons.includes(input.reason as ContactReason)
   )
-    return { success: false, message: errors.reason };
+    return { success: false, message: "Select a valid contact reason." };
 
   const message = typeof input.message === "string" ? input.message.trim() : "";
   if (message.length > 1000)
     return {
       success: false,
-      message: errors.message,
+      message: "The message must be 1,000 characters or less.",
     };
 
   if (input.mode !== "now" && input.mode !== "scheduled")
-    return {
-      success: false,
-      message: errors.mode,
-    };
+    return { success: false, message: "Select a valid call option." };
 
   let scheduledDate: string | undefined;
   let timezone: SupportedTimezone | undefined;
@@ -228,7 +171,7 @@ export function validateScheduleCall(
       typeof input.timezone !== "string" ||
       !supportedTimezones.includes(input.timezone as SupportedTimezone)
     )
-      return { success: false, message: errors.timezone };
+      return { success: false, message: "Select a valid time zone." };
     timezone = input.timezone as SupportedTimezone;
     scheduledDate =
       typeof input.scheduledDate === "string" &&
@@ -236,24 +179,24 @@ export function validateScheduleCall(
         ? zonedDateTimeToIso(input.scheduledDate, input.scheduledTime, timezone)
         : undefined;
     if (!scheduledDate || new Date(scheduledDate) <= now)
-      return { success: false, message: errors.future };
+      return { success: false, message: "Choose a future date and time." };
   }
 
   if (input.consent !== true)
     return {
       success: false,
-      message: errors.consent,
+      message: "Confirm your consent to receive the call.",
     };
 
   return {
     success: true,
     data: {
       name,
+      country: input.country,
       phone,
-      reason: input.reason as SupportedContactReason,
+      reason: input.reason as ContactReason,
       message,
       mode: input.mode,
-      locale: input.locale,
       currency: input.currency,
       ...(scheduledDate ? { scheduledDate } : {}),
       ...(timezone ? { timezone } : {}),
@@ -262,14 +205,14 @@ export function validateScheduleCall(
 }
 
 export function buildCustomerInfo(
-  reason: SupportedContactReason,
-  message: string,
-  locale: Locale,
+  country: SupportedCountry,
   currency: SupportedCurrency,
+  reason: ContactReason,
+  message: string,
 ) {
   return [
     "Source: BC-Shop website",
-    `Language: ${locale}`,
+    `Country: ${country}`,
     `Currency: ${currency}`,
     `Reason: ${reason}`,
     message ? `Customer message: ${message}` : undefined,

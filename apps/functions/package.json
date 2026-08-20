@@ -4,16 +4,21 @@
   "private": true,
   "main": "dist/src/functions/*.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "start": "func start"
   },
   "dependencies": {
-    "@azure/functions": "^4.7.2"
+    "@azure/data-tables": "^13.3.2",
+    "@azure/functions": "^4.7.2",
+    "@azure/storage-blob": "^12.33.0",
+    "@azure/storage-queue": "^12.31.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "vitest": "4.1.11"
   },
   "engines": {
     "node": "24.x"

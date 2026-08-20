@@ -3,108 +3,28 @@
 import { type FormEvent, useEffect, useState } from "react";
 import {
   contactReasons,
-  englishContactReasons,
   supportedTimezones,
   type SupportedTimezone,
 } from "@/lib/contact/schedule-call";
-import type { ContactLocale } from "./contact-page";
 import type { SupportedCurrency } from "@/lib/currency/currency";
 
 type Feedback = { type: "success" } | { type: "error"; message: string } | null;
 
-const copy = {
-  en: {
-    name: "Name",
-    preference: "How would you like to talk to us?",
-    now: "Call me now",
-    scheduled: "Schedule a call",
-    phone: "Brazilian phone number",
-    phoneHint: "Include the area code.",
-    reason: "Contact reason",
-    select: "Select an option",
-    message: "Message",
-    optional: "(optional)",
-    placeholder: "Tell us briefly what you need.",
-    when: "When should we call?",
-    timezone: "Brasília time",
-    date: "Date",
-    time: "Time",
-    timeZone: "Time zone",
-    consent:
-      "I agree to receive a call from BC-Shop at the phone number and time provided.",
-    submitNow: "Call me now",
-    submitScheduled: "Schedule call",
-    submitting: "Scheduling…",
-    successTitle: "Call scheduled!",
-    successText: "We will contact you at the requested time.",
-    again: "Schedule another call",
-    fallback: "We could not schedule the call. Please try again.",
-    connection: "Could not connect to the service. Please try again.",
-  },
-  pt: {
-    name: "Nome",
-    preference: "Como você prefere falar com a gente?",
-    now: "Me ligue agora",
-    scheduled: "Agendar uma ligação",
-    phone: "Telefone brasileiro",
-    phoneHint: "Inclua o DDD.",
-    reason: "Motivo do contato",
-    select: "Selecione uma opção",
-    message: "Mensagem",
-    optional: "(opcional)",
-    placeholder: "Conte um pouco mais sobre o que você precisa.",
-    when: "Quando devemos ligar?",
-    timezone: "Horário de Brasília",
-    date: "Data",
-    time: "Horário",
-    timeZone: "Fuso horário",
-    consent:
-      "Concordo em receber uma ligação da BC-Shop no telefone e horário informados.",
-    submitNow: "Receber ligação agora",
-    submitScheduled: "Agendar ligação",
-    submitting: "Agendando…",
-    successTitle: "Ligação agendada!",
-    successText: "Vamos entrar em contato no horário solicitado.",
-    again: "Agendar outra ligação",
-    fallback: "Não foi possível agendar a ligação. Tente novamente.",
-    connection:
-      "Não foi possível conectar ao serviço. Verifique sua conexão e tente novamente.",
-  },
-} as const;
+const timezoneLabels = [
+  "São Paulo / Brasília (UTC-03:00)",
+  "New York",
+  "Los Angeles",
+  "London",
+  "Lisbon",
+  "Madrid",
+] as const;
 
-const timezoneLabels = {
-  en: [
-    "São Paulo / Brasília (UTC-03:00)",
-    "New York",
-    "Los Angeles",
-    "London",
-    "Lisbon",
-    "Madrid",
-  ],
-  pt: [
-    "São Paulo / Brasília (UTC-03:00)",
-    "Nova York",
-    "Los Angeles",
-    "Londres",
-    "Lisboa",
-    "Madri",
-  ],
-} as const;
-
-export function ContactForm({
-  locale,
-  currency,
-}: {
-  locale: ContactLocale;
-  currency: SupportedCurrency;
-}) {
+export function ContactForm({ currency }: { currency: SupportedCurrency }) {
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [mode, setMode] = useState<"now" | "scheduled">("now");
   const [timezone, setTimezone] =
     useState<SupportedTimezone>("America/Sao_Paulo");
-  const text = copy[locale];
-  const reasons = locale === "en" ? englishContactReasons : contactReasons;
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -128,11 +48,11 @@ export function ContactForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: values.get("name"),
+          country: "US",
           phone: values.get("phone"),
           reason: values.get("reason"),
           message: values.get("message"),
           mode,
-          locale,
           currency,
           scheduledDate:
             mode === "scheduled" ? values.get("scheduledDate") : undefined,
@@ -148,7 +68,9 @@ export function ContactForm({
       if (!response.ok) {
         setFeedback({
           type: "error",
-          message: result.error?.message ?? text.fallback,
+          message:
+            result.error?.message ??
+            "We could not request the call. Please try again.",
         });
         return;
       }
@@ -157,7 +79,7 @@ export function ContactForm({
     } catch {
       setFeedback({
         type: "error",
-        message: text.connection,
+        message: "Could not connect to the service. Please try again.",
       });
     } finally {
       setSubmitting(false);
@@ -168,14 +90,14 @@ export function ContactForm({
     return (
       <div className="contact-success" role="status">
         <span aria-hidden="true">✓</span>
-        <h2>{text.successTitle}</h2>
-        <p>{text.successText}</p>
+        <h2>Call scheduled!</h2>
+        <p>We will contact you at the requested time.</p>
         <button
           className="button button--accent"
           type="button"
           onClick={() => setFeedback(null)}
         >
-          {text.again}
+          Request another call
         </button>
       </div>
     );
@@ -183,7 +105,7 @@ export function ContactForm({
   return (
     <form className="contact-form" onSubmit={handleSubmit}>
       <fieldset className="call-mode field--wide">
-        <legend>{text.preference}</legend>
+        <legend>How would you like to talk to us?</legend>
         <div>
           <label>
             <input
@@ -193,7 +115,7 @@ export function ContactForm({
               checked={mode === "now"}
               onChange={() => setMode("now")}
             />
-            <span>{text.now}</span>
+            <span>Call me now</span>
           </label>
           <label>
             <input
@@ -203,12 +125,12 @@ export function ContactForm({
               checked={mode === "scheduled"}
               onChange={() => setMode("scheduled")}
             />
-            <span>{text.scheduled}</span>
+            <span>Schedule a call</span>
           </label>
         </div>
       </fieldset>
       <div className="field">
-        <label htmlFor="name">{text.name}</label>
+        <label htmlFor="name">Name</label>
         <input
           id="name"
           name="name"
@@ -218,56 +140,64 @@ export function ContactForm({
         />
       </div>
       <div className="field">
-        <label htmlFor="phone">{text.phone}</label>
-        <input
-          id="phone"
-          name="phone"
-          type="tel"
-          autoComplete="tel"
-          inputMode="tel"
-          placeholder="(11) 99999-9999"
-          required
-        />
-        <small>{text.phoneHint}</small>
+        <label htmlFor="phone">Phone number</label>
+        <div className="phone-field">
+          <span>
+            <span role="img" aria-label="United States">
+              🇺🇸
+            </span>{" "}
+            +1
+          </span>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            autoComplete="tel-national"
+            inputMode="tel"
+            placeholder="(415) 555-2671"
+            required
+          />
+        </div>
+        <small>Enter a United States phone number.</small>
       </div>
       <div className="field field--wide">
-        <label htmlFor="reason">{text.reason}</label>
+        <label htmlFor="reason">Contact reason</label>
         <select id="reason" name="reason" defaultValue="" required>
           <option value="" disabled>
-            {text.select}
+            Select an option
           </option>
-          {reasons.map((reason) => (
+          {contactReasons.map((reason) => (
             <option key={reason}>{reason}</option>
           ))}
         </select>
       </div>
       <div className="field field--wide">
         <label htmlFor="message">
-          {text.message} <span>{text.optional}</span>
+          Message <span>(optional)</span>
         </label>
         <textarea
           id="message"
           name="message"
           rows={4}
           maxLength={1000}
-          placeholder={text.placeholder}
+          placeholder="Tell us briefly what you need."
         />
       </div>
       {mode === "scheduled" && (
         <fieldset className="schedule-fields field--wide">
-          <legend>{text.when}</legend>
-          <p>{text.timezone}</p>
+          <legend>When should we call?</legend>
+          <p>Choose the time zone that applies to your selected local time.</p>
           <div>
             <label>
-              {text.date}
+              Date
               <input name="scheduledDate" type="date" required />
             </label>
             <label>
-              {text.time}
+              Time
               <input name="scheduledTime" type="time" required />
             </label>
             <label>
-              {text.timeZone}
+              Time zone
               <select
                 name="timezone"
                 value={timezone}
@@ -278,7 +208,7 @@ export function ContactForm({
               >
                 {supportedTimezones.map((value, index) => (
                   <option key={value} value={value}>
-                    {timezoneLabels[locale][index]}
+                    {timezoneLabels[index]}
                   </option>
                 ))}
               </select>
@@ -288,7 +218,10 @@ export function ContactForm({
       )}
       <label className="consent field--wide">
         <input name="consent" type="checkbox" required />
-        <span>{text.consent}</span>
+        <span>
+          I agree to receive a call from BC-Shop at the phone number and time
+          provided.
+        </span>
       </label>
       {feedback?.type === "error" && (
         <p className="form-error field--wide" role="alert">
@@ -301,10 +234,10 @@ export function ContactForm({
         disabled={submitting}
       >
         {submitting
-          ? text.submitting
+          ? "Requesting…"
           : mode === "now"
-            ? text.submitNow
-            : text.submitScheduled}
+            ? "Call me now"
+            : "Schedule call"}
       </button>
     </form>
   );

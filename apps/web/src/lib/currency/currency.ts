@@ -1,5 +1,3 @@
-import type { Locale } from "@/lib/i18n/locale";
-
 export const supportedCurrencies = ["BRL", "USD", "EUR", "GBP"] as const;
 export type SupportedCurrency = (typeof supportedCurrencies)[number];
 export type Money = { amount: number; currency: "BRL" };
@@ -19,12 +17,9 @@ export function isSupportedCurrency(
   return supportedCurrencies.includes(value as SupportedCurrency);
 }
 
-export function resolveCurrency(
-  saved: string | undefined,
-  locale: Locale,
-): SupportedCurrency {
+export function resolveCurrency(saved: string | undefined): SupportedCurrency {
   if (isSupportedCurrency(saved)) return saved;
-  return locale === "pt" ? "BRL" : "USD";
+  return "USD";
 }
 
 export function convertFromBrl(
@@ -34,12 +29,8 @@ export function convertFromBrl(
   return money.amount * brlDisplayRates[currency];
 }
 
-export function formatMoney(
-  money: Money,
-  currency: SupportedCurrency,
-  locale: Locale,
-): string {
-  return new Intl.NumberFormat(locale === "pt" ? "pt-BR" : "en-US", {
+export function formatMoney(money: Money, currency: SupportedCurrency): string {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     minimumFractionDigits: 2,

@@ -113,4 +113,20 @@ describe("POST /api/agent/products/search", () => {
       price: canonical?.price,
     });
   });
+
+  it("does not use or return language context", async () => {
+    const response = await POST(
+      request(
+        {
+          language: "pt",
+          locale: "pt-BR",
+          parameters: { query: "BC Office Pro", language: "pt" },
+        },
+        configuredKey,
+      ),
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(JSON.stringify(body)).not.toMatch(/language|locale/i);
+  });
 });

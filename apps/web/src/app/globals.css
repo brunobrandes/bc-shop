@@ -85,20 +85,6 @@ nav a:hover {
   align-items: center;
   gap: 14px;
 }
-.locale-switcher {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #8f99a3;
-  font-size: 10px;
-  font-weight: 700;
-}
-.locale-switcher a[aria-current="page"] {
-  color: var(--lime);
-}
-.locale-switcher a:hover {
-  color: white;
-}
 .currency-selector select {
   width: 58px;
   height: 28px;
@@ -653,20 +639,6 @@ footer {
   gap: 90px;
   align-items: start;
 }
-.contact-locale-bar {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: -38px;
-  margin-bottom: 24px;
-}
-.contact-locale-bar a {
-  padding: 7px 10px;
-  border: 1px solid #cdd3d7;
-  background: white;
-  color: #4e5862;
-  font-size: 11px;
-  font-weight: 700;
-}
 .contact-intro {
   padding-top: 28px;
 }
@@ -780,6 +752,24 @@ footer {
 .field small {
   color: #7b848c;
   font-size: 10px;
+}
+.phone-field {
+  display: flex;
+}
+.phone-field > span {
+  display: grid;
+  min-width: 78px;
+  place-items: center;
+  border: 1px solid #cdd3d7;
+  border-right: 0;
+  border-radius: 3px 0 0 3px;
+  background: var(--paper);
+  color: #4d5862;
+  font-size: 13px;
+  font-weight: 700;
+}
+.phone-field input {
+  border-radius: 0 3px 3px 0;
 }
 .schedule-fields {
   margin: 0;

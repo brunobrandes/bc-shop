@@ -3,6 +3,10 @@
   "Values": {
     "AzureWebJobsStorage": "",
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "ATLAS_WEBHOOK_SECRET": "replace-with-a-long-random-secret"
+    "ATLAS_WEBHOOK_SECRET": "replace-with-a-long-random-secret",
+    "ATLAS_CALLS_TABLE": "atlascalls",
+    "ATLAS_INBOX_CONTAINER": "atlas-webhook-inbox",
+    "ATLAS_TRANSCRIPTS_CONTAINER": "atlas-transcripts",
+    "ATLAS_PROCESSING_QUEUE": "atlas-call-completed"
   }
 }

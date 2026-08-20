@@ -1,13 +1,10 @@
-import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { localeCookieName, resolveLocale } from "@/lib/i18n/locale";
+import { cookies } from "next/headers";
+import { Storefront } from "@/components/store/storefront";
+import { currencyCookieName, resolveCurrency } from "@/lib/currency/currency";
 
 export default async function Home() {
-  const cookieStore = await cookies();
-  const headerStore = await headers();
-  const locale = resolveLocale(
-    cookieStore.get(localeCookieName)?.value,
-    headerStore.get("accept-language") ?? undefined,
+  const currency = resolveCurrency(
+    (await cookies()).get(currencyCookieName)?.value,
   );
-  redirect(`/${locale}`);
+  return <Storefront currency={currency} />;
 }
