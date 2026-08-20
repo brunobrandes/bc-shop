@@ -40,6 +40,7 @@ jobs:
           AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
           AZURE_FUNCTION_APP_NAME: ${{ vars.AZURE_FUNCTION_APP_NAME }}
           ATLAS_WEBHOOK_SECRET: ${{ secrets.ATLAS_WEBHOOK_SECRET }}
+          BC_ADMIN_API_KEY: ${{ secrets.BC_ADMIN_API_KEY }}
         run: |
           az deployment sub validate \
             --location "$AZURE_LOCATION" \
@@ -49,6 +50,7 @@ jobs:
               resourceGroupName="$AZURE_RESOURCE_GROUP" \
               functionAppName="$AZURE_FUNCTION_APP_NAME" \
               atlasWebhookSecret="$ATLAS_WEBHOOK_SECRET" \
+              bcAdminApiKey="$BC_ADMIN_API_KEY" \
             --only-show-errors \
             --output none
 
@@ -58,6 +60,7 @@ jobs:
           AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
           AZURE_FUNCTION_APP_NAME: ${{ vars.AZURE_FUNCTION_APP_NAME }}
           ATLAS_WEBHOOK_SECRET: ${{ secrets.ATLAS_WEBHOOK_SECRET }}
+          BC_ADMIN_API_KEY: ${{ secrets.BC_ADMIN_API_KEY }}
         run: |
           az deployment sub create \
             --name "bc-shop-${GITHUB_RUN_ID}" \
@@ -68,5 +71,6 @@ jobs:
               resourceGroupName="$AZURE_RESOURCE_GROUP" \
               functionAppName="$AZURE_FUNCTION_APP_NAME" \
               atlasWebhookSecret="$ATLAS_WEBHOOK_SECRET" \
+              bcAdminApiKey="$BC_ADMIN_API_KEY" \
             --only-show-errors \
             --output none

@@ -16,7 +16,7 @@ set +a
 
 required=(
   AZURE_SUBSCRIPTION_ID AZURE_LOCATION AZURE_RESOURCE_GROUP
-  AZURE_FUNCTION_APP_NAME ATLAS_WEBHOOK_SECRET
+  AZURE_FUNCTION_APP_NAME ATLAS_WEBHOOK_SECRET BC_ADMIN_API_KEY
 )
 
 for name in "${required[@]}"; do
@@ -42,6 +42,7 @@ az deployment sub create \
     resourceGroupName="${AZURE_RESOURCE_GROUP}" \
     functionAppName="${AZURE_FUNCTION_APP_NAME}" \
     atlasWebhookSecret="${ATLAS_WEBHOOK_SECRET}" \
+    bcAdminApiKey="${BC_ADMIN_API_KEY}" \
   --only-show-errors \
   --output none
 

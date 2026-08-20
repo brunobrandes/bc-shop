@@ -29,12 +29,16 @@ The storefront is English-only at `/`, and the call-request flow is available at
 
 ## Environment
 
-| Variable            | Required                                 | Purpose                                                        |
-| ------------------- | ---------------------------------------- | -------------------------------------------------------------- |
-| `ATLAS_API_KEY`     | Only when calling Atlas                  | Server-side API credential                                     |
-| `ATLAS_CAMPAIGN_ID` | Only when initiating the configured chat | Atlas campaign identifier                                      |
-| `ATLAS_BASE_URL`    | No                                       | Atlas API root; defaults to `https://api.youratlas.com/v1/api` |
-| `BC_AGENT_API_KEY`  | For Atlas product-search Actions         | Server-side machine-to-machine key                             |
+| Variable                     | Required                                 | Purpose                                                        |
+| ---------------------------- | ---------------------------------------- | -------------------------------------------------------------- |
+| `ATLAS_API_KEY`              | Only when calling Atlas                  | Server-side API credential                                     |
+| `ATLAS_CAMPAIGN_ID`          | Only when initiating the configured chat | Atlas campaign identifier                                      |
+| `ATLAS_BASE_URL`             | No                                       | Atlas API root; defaults to `https://api.youratlas.com/v1/api` |
+| `BC_AGENT_API_KEY`           | For Atlas product-search Actions         | Server-side machine-to-machine key                             |
+| `ADMIN_EMAILS`               | For CallInsights                         | Comma-separated server-side admin allowlist                    |
+| `BC_ADMIN_API_KEY`           | For CallInsights                         | Next.js-to-Azure machine key                                   |
+| `CALL_INSIGHTS_API_BASE_URL` | For CallInsights                         | Azure internal API base URL                                    |
+| `NEXT_PUBLIC_FIREBASE_*`     | For CallInsights login                   | Public Firebase web application configuration                  |
 
 Never prefix the API key with `NEXT_PUBLIC_`. Local `.env*` files are ignored; `.env.example` contains placeholders only.
 
@@ -59,6 +63,8 @@ The root scripts orchestrate the workspace. Package-specific checks can also be 
 - `GET /api/products/:id` — `{ "data": Product }`, or a consistent `404` error
 - `POST /api/contact/call` — validates and requests an immediate or scheduled Atlas call
 - `POST /api/agent/products/search` — authenticated Atlas Action over the canonical catalog
+- `GET /api/admin/call-insights/*` — Firebase-authenticated admin proxy
+- `GET /admin` — protected CallInsights dashboard
 
 ## Atlas boundary
 
@@ -66,7 +72,7 @@ The root scripts orchestrate the workspace. Package-specific checks can also be 
 
 ## Stage 0 scope
 
-There is no authentication, database, persisted cart, checkout, payments, CRM, admin, complete chat, campaign provisioning, webhooks, or AI recommendation logic. Product detail buttons and the cart are visual placeholders. See [the Stage 0 implementation notes](docs/stages/00-foundation.md).
+There is no checkout, payments, CRM, complete chat, campaign provisioning, or AI-derived business analytics. Product detail buttons and the cart remain visual placeholders. See [the Stage 0 implementation notes](docs/stages/00-foundation.md).
 
 ## Deployment architecture
 
@@ -91,13 +97,23 @@ Use the Firebase console's native GitHub integration, which owns branch-triggere
    ATLAS_API_KEY
    ATLAS_CAMPAIGN_ID
    BC_AGENT_API_KEY
+   ADMIN_EMAILS
+   BC_ADMIN_API_KEY
+   CALL_INSIGHTS_API_BASE_URL
+   NEXT_PUBLIC_FIREBASE_API_KEY
+   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+   NEXT_PUBLIC_FIREBASE_PROJECT_ID
+   NEXT_PUBLIC_FIREBASE_APP_ID
    ```
 
-   `apps/web/apphosting.yaml` maps these secrets only into the runtime. `ATLAS_BASE_URL` is non-secret configuration. Never use `NEXT_PUBLIC_` for these values.
+   `apps/web/apphosting.yaml` maps server credentials only into the runtime. Firebase web configuration is injected during build and runtime and is public after bundling; no server credential uses `NEXT_PUBLIC_`.
 
-6. Push to `main`, wait for the Firebase rollout check, and copy the generated App Hosting URL.
-7. Add that URL, including `https://`, as the non-secret GitHub repository variable `WEB_BASE_URL`.
-8. Verify `GET <WEB_BASE_URL>/api/health`.
+6. Enable Firebase Authentication and the Google provider. Add the production App Hosting domain to Firebase Authentication's authorized domains. Firebase Admin uses the App Hosting runtime's Application Default Credentials; do not create a service-account JSON.
+
+7. Set `ADMIN_EMAILS` to the comma-separated verified Google accounts allowed to access `/admin`. Set `CALL_INSIGHTS_API_BASE_URL` to `https://<function-app>.azurewebsites.net/api/internal/call-insights`.
+8. Use the same independently generated `BC_ADMIN_API_KEY` value in Firebase Secret Manager and the GitHub Actions secret described below.
+9. Push to `main`, wait for the Firebase rollout check, and copy the generated App Hosting URL.
+10. Add that URL, including `https://`, as the non-secret GitHub repository variable `WEB_BASE_URL` and verify `GET <WEB_BASE_URL>/api/health`.
 
 The root `pnpm-lock.yaml`, workspace configuration, and `apps/web` app root remain part of the monorepo build. Firebase buildpacks detect pnpm from the root lockfile and use the existing Next.js build script. No service-account JSON or Firebase credential belongs in this repository.
 
@@ -111,7 +127,7 @@ The webhook remains available at:
 POST https://<function-app>.azurewebsites.net/api/webhooks/atlas/call-completed/{secret}
 ```
 
-Azure Bicep creates an FC1 Linux Function App using Node.js 24, its runtime storage account, deployment package container, Atlas call Table, private inbox/transcript containers, and processing/poison queues. `ATLAS_WEBHOOK_SECRET` is the only application secret configured by this Azure deployment.
+Azure Bicep creates an FC1 Linux Function App using Node.js 24, its runtime storage account, deployment package container, Atlas call Table, private inbox/transcript containers, and processing/poison queues. It configures `ATLAS_WEBHOOK_SECRET` and `BC_ADMIN_API_KEY` as server-side application settings.
 
 The webhook acknowledges Atlas only after a durable Storage handoff. Queue-trigger processing then persists call metadata and transcript with native retries and deterministic `callId` idempotency. See [Atlas call-completed ingestion](docs/architecture/atlas-call-ingestion.md).
 
@@ -154,13 +170,14 @@ AZURE_FUNCTION_APP_NAME
 WEB_BASE_URL
 ```
 
-Add this GitHub Actions secret for Azure:
+Add these GitHub Actions secrets for Azure:
 
 ```text
 ATLAS_WEBHOOK_SECRET
+BC_ADMIN_API_KEY
 ```
 
-The storefront's Atlas and BC agent secrets belong to Firebase/Google Cloud Secret Manager, not GitHub Actions or Azure infrastructure.
+The same `BC_ADMIN_API_KEY` value must exist in Firebase Secret Manager so the Next.js server can call Azure. It is never sent to the browser. Other storefront secrets belong only to Firebase/Google Cloud Secret Manager.
 
 No `AZURE_CLIENT_SECRET`, publish profile, or service-principal password is used.
 

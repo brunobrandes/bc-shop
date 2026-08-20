@@ -4,6 +4,9 @@ param functionAppName string
 @secure()
 param atlasWebhookSecret string
 
+@secure()
+param bcAdminApiKey string
+
 var planName = 'plan-bc-shop-functions-flex'
 var storageAccountName = take('st${uniqueString(subscription().id, resourceGroup().id)}', 24)
 var deploymentContainerName = 'function-releases'
@@ -116,6 +119,10 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'ATLAS_WEBHOOK_SECRET'
           value: atlasWebhookSecret
+        }
+        {
+          name: 'BC_ADMIN_API_KEY'
+          value: bcAdminApiKey
         }
         {
           name: 'ATLAS_CALLS_TABLE'

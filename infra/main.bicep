@@ -8,6 +8,9 @@ param functionAppName string
 @secure()
 param atlasWebhookSecret string
 
+@secure()
+param bcAdminApiKey string
+
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
   location: location
@@ -20,6 +23,7 @@ module workloads './resources.bicep' = {
     location: location
     functionAppName: functionAppName
     atlasWebhookSecret: atlasWebhookSecret
+    bcAdminApiKey: bcAdminApiKey
   }
 }
 

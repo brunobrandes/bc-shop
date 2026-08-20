@@ -5,10 +5,15 @@ import { QueueClient } from "@azure/storage-queue";
 
 export type AtlasCallCompletedEvent = {
   callId: string;
+  campaignId?: string;
+  customerName?: string;
   status?: string;
   endedReason?: string;
   durationSeconds?: number;
   callSummary?: string;
+  startedAt?: string;
+  endedAt?: string;
+  audioUrl?: string;
   callTranscript: string;
 };
 
@@ -131,12 +136,17 @@ export class AzureAtlasCallStorage implements AtlasCallStorage {
       partitionKey,
       rowKey: storageKeyForCall(event.callId),
       callId: event.callId,
+      ...(event.campaignId ? { campaignId: event.campaignId } : {}),
+      ...(event.customerName ? { customerName: event.customerName } : {}),
       ...(event.status ? { callStatus: event.status } : {}),
       ...(event.endedReason ? { endedReason: event.endedReason } : {}),
       ...(event.durationSeconds !== undefined
         ? { durationSeconds: event.durationSeconds }
         : {}),
       ...(event.callSummary ? { callSummary: event.callSummary } : {}),
+      ...(event.startedAt ? { startedAt: event.startedAt } : {}),
+      ...(event.endedAt ? { endedAt: event.endedAt } : {}),
+      ...(event.audioUrl ? { audioUrl: event.audioUrl } : {}),
     };
     await this.table.upsertEntity(entity, "Merge");
   }

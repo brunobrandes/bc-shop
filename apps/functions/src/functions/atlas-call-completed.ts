@@ -25,6 +25,18 @@ function secretsMatch(
   );
 }
 
+function safeHttpUrl(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:"
+      ? value
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function extractEvent(
   value: unknown,
 ): AtlasCallCompletedEvent | undefined {
@@ -46,6 +58,12 @@ export function extractEvent(
 
   return {
     callId: event.callId.trim(),
+    ...(typeof event.campaignId === "string"
+      ? { campaignId: event.campaignId }
+      : {}),
+    ...(typeof event.customerName === "string"
+      ? { customerName: event.customerName }
+      : {}),
     ...(typeof event.status === "string" ? { status: event.status } : {}),
     ...(typeof event.endedReason === "string"
       ? { endedReason: event.endedReason }
@@ -56,6 +74,13 @@ export function extractEvent(
       : {}),
     ...(typeof event.callSummary === "string"
       ? { callSummary: event.callSummary }
+      : {}),
+    ...(typeof event.startedAt === "string"
+      ? { startedAt: event.startedAt }
+      : {}),
+    ...(typeof event.endedAt === "string" ? { endedAt: event.endedAt } : {}),
+    ...(safeHttpUrl(event.audioUrl)
+      ? { audioUrl: safeHttpUrl(event.audioUrl) }
       : {}),
     callTranscript:
       typeof event.callTranscript === "string" ? event.callTranscript : "",
