@@ -52,10 +52,11 @@ jobs:
 
       - name: Create Function artifact
         run: |
-          pnpm --filter functions deploy --prod --legacy "$RUNNER_TEMP/functions-package"
+          pnpm --config.node-linker=hoisted --filter functions deploy --prod --legacy "$RUNNER_TEMP/functions-package"
           test -f "$RUNNER_TEMP/functions-package/host.json"
           test -f "$RUNNER_TEMP/functions-package/dist/src/functions/atlas-call-completed.js"
           test -f "$RUNNER_TEMP/functions-package/node_modules/@azure/functions/package.json"
+          test ! -L "$RUNNER_TEMP/functions-package/node_modules/@azure/functions"
           tar -czf "$RUNNER_TEMP/functions-deploy.tar.gz" -C "$RUNNER_TEMP/functions-package" .
 
       - name: Upload Functions artifact
