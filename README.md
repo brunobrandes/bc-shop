@@ -70,7 +70,7 @@ There is no authentication, database, persisted cart, checkout, payments, CRM, a
 
 ## Azure deployment
 
-Both workloads use Node.js 24 on Linux. Bicep provisions one resource group, a Basic App Service plan, the Next.js Web App, the independent Function App, and the Function runtime storage account. The App Service startup command runs the monorepo standalone entry point at `apps/web/server.js`.
+Both workloads use Node.js 24 on Linux. Bicep provisions one resource group, a P0v4 App Service plan, the Next.js Web App, the independent Function App, and the Function runtime storage account. The App Service startup command runs the monorepo standalone entry point at `apps/web/server.js`.
 
 ### Local Azure setup
 
