@@ -1,5 +1,11 @@
 # Runtime secrets are stored in Google Cloud Secret Manager and resolved by
 # Firebase App Hosting. No secret values belong in this file.
+scripts:
+  # The framework adapter currently drops Next from the optimized standalone
+  # bundle in this pnpm monorepo. Use App Hosting's supported Node build path.
+  buildCommand: npm run build
+  runCommand: node .next/standalone/server.js
+
 runConfig:
   minInstances: 0
   maxInstances: 2
