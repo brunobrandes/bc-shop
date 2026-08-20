@@ -1,0 +1,82 @@
+name: Deploy All
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bc-shop-poc-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-infra:
+    name: Deploy Infrastructure
+    uses: ./.github/workflows/deploy-infra.yml
+    permissions:
+      id-token: write
+      contents: read
+    secrets: inherit
+
+  deploy-web:
+    name: Deploy Web
+    needs: deploy-infra
+    uses: ./.github/workflows/deploy-web.yml
+    permissions:
+      id-token: write
+      contents: read
+
+  deploy-functions:
+    name: Deploy Functions
+    needs: deploy-web
+    uses: ./.github/workflows/deploy-functions.yml
+    permissions:
+      id-token: write
+      contents: read
+
+  smoke-tests:
+    name: Smoke Tests
+    needs: deploy-functions
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Azure login with OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Check web health
+        env:
+          AZURE_WEB_APP_NAME: ${{ vars.AZURE_WEB_APP_NAME }}
+        run: |
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --retry 12 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            --max-time 20 \
+            "https://${AZURE_WEB_APP_NAME}.azurewebsites.net/api/health" \
+            >/dev/null
+
+      - name: Check Function App state
+        env:
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_FUNCTION_APP_NAME: ${{ vars.AZURE_FUNCTION_APP_NAME }}
+        run: |
+          function_state="$(az functionapp show \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$AZURE_FUNCTION_APP_NAME" \
+            --query state \
+            --output tsv)"
+
+          if [[ "$function_state" != "Running" ]]; then
+            echo "Function App is not running." >&2
+            exit 1
+          fi

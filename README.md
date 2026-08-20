@@ -123,9 +123,12 @@ No `AZURE_CLIENT_SECRET`, publish profile, or service-principal password is used
 
 ### Deployment workflows
 
+- `deploy-all.yml` is the recommended POC deployment path. It runs infrastructure, web, Functions, and smoke tests in strict sequence and prevents overlapping full deployments.
 - `deploy-infra.yml` is manually triggered. It logs in through OIDC, validates Bicep, and deploys the subscription-scope template.
 - `deploy-web.yml` validates `apps/web` from the root workspace, creates a standalone artifact, and deploys only that artifact to App Service when relevant web files change on `main`.
 - `deploy-functions.yml` validates and compiles `apps/functions` from the root workspace, creates its production artifact, and deploys only that artifact to the Function App when Function files change on `main`.
+
+The three workload workflows remain independently dispatchable and are also reusable through `workflow_call`. A full deployment follows `Infrastructure → Web → Functions → Smoke Tests`, so an application deployment cannot start before its Azure resources exist.
 
 Validation and build jobs run BC-Shop on Node.js 24. Azure deployment actions may independently report an action-runtime warning until their maintainers publish a newer supported major; that warning does not change the application or Azure runtime version.
 

@@ -1,6 +1,7 @@
 name: Deploy BC-Shop web
 
 on:
+  workflow_call:
   push:
     branches: [main]
     paths:
