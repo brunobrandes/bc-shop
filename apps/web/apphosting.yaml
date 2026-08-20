@@ -1,11 +1,5 @@
 # Runtime secrets are stored in Google Cloud Secret Manager and resolved by
 # Firebase App Hosting. No secret values belong in this file.
-scripts:
-  # Use App Hosting's Node buildpack path so runtime dependencies remain
-  # available to the Next.js process in this pnpm monorepo.
-  buildCommand: BC_FIREBASE_GENERIC_BUILD=true npm run build
-  runCommand: BC_FIREBASE_GENERIC_BUILD=true npm run start -- --hostname 0.0.0.0
-
 runConfig:
   minInstances: 0
   maxInstances: 2
