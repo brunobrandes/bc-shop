@@ -1,7 +1,7 @@
 "use client";
 
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 
 function required(value: string | undefined, name: string) {
   if (!value) throw new Error(`Missing Firebase client configuration: ${name}`);
@@ -31,5 +31,3 @@ export function firebaseClientAuth() {
       });
   return getAuth(app);
 }
-
-export const googleProvider = new GoogleAuthProvider();

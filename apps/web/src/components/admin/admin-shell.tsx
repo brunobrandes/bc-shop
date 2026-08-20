@@ -1,10 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { type FormEvent, useState } from "react";
 import { useAdminAuth } from "./admin-auth";
 
 export function AdminLogin({ error }: { error?: string }) {
   const auth = useAdminAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      await auth.signIn(email, password);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <main className="admin-login">
       <section className="admin-login__card">
@@ -23,9 +38,37 @@ export function AdminLogin({ error }: { error?: string }) {
             {error || auth.error}
           </div>
         )}
-        <button className="admin-google-button" onClick={() => auth.signIn()}>
-          <span>G</span> Continue with Google
-        </button>
+        <form className="admin-login-form" onSubmit={submit}>
+          <label>
+            Email
+            <input
+              type="email"
+              name="email"
+              autoComplete="username"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </label>
+          <button
+            className="admin-login-button"
+            type="submit"
+            disabled={submitting}
+          >
+            {submitting ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
       </section>
     </main>
   );

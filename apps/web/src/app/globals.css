@@ -1148,21 +1148,46 @@ footer {
   font-weight: 800;
   letter-spacing: 1.6px;
 }
-.admin-google-button {
-  width: 100%;
-  min-height: 50px;
+.admin-login-form {
+  display: grid;
+  gap: 16px;
   margin-top: 26px;
+}
+.admin-login-form label {
+  display: grid;
+  gap: 7px;
+  color: #27333d;
+  font-size: 13px;
+  font-weight: 750;
+}
+.admin-login-form input {
+  width: 100%;
+  min-height: 48px;
   border: 1px solid #bdc4c1;
   border-radius: 5px;
+  padding: 10px 12px;
   background: #fff;
   color: #172029;
+  font: inherit;
+}
+.admin-login-form input:focus {
+  border-color: #52675e;
+  outline: 2px solid #c7ff4a66;
+  outline-offset: 1px;
+}
+.admin-login-button {
+  width: 100%;
+  min-height: 50px;
+  border: 0;
+  border-radius: 5px;
+  background: #172029;
+  color: white;
   font-weight: 750;
   cursor: pointer;
 }
-.admin-google-button span {
-  margin-right: 12px;
-  color: #2864d7;
-  font-size: 17px;
+.admin-login-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 .admin-alert {
   margin-top: 20px;

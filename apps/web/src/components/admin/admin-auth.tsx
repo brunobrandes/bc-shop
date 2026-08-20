@@ -2,18 +2,18 @@
 
 import {
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { firebaseClientAuth, googleProvider } from "@/lib/firebase/client";
+import { firebaseClientAuth } from "@/lib/firebase/client";
 
 type AdminAuthValue = {
   user: User | null;
   loading: boolean;
   error?: string;
-  signIn: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   token: () => Promise<string | undefined>;
 };
@@ -51,12 +51,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       user,
       loading,
       error,
-      async signIn() {
+      async signIn(email, password) {
         setError(undefined);
         try {
-          await signInWithPopup(firebaseClientAuth(), googleProvider);
+          await signInWithEmailAndPassword(
+            firebaseClientAuth(),
+            email.trim(),
+            password,
+          );
         } catch {
-          setError("Google Sign-In was not completed.");
+          setError("Invalid email or password.");
         }
       },
       async signOut() {
