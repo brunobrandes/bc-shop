@@ -115,7 +115,7 @@ Use the Firebase console's native GitHub integration, which owns branch-triggere
 9. Push to `main`, wait for the Firebase rollout check, and copy the generated App Hosting URL.
 10. Add that URL, including `https://`, as the non-secret GitHub repository variable `WEB_BASE_URL` and verify `GET <WEB_BASE_URL>/api/health`.
 
-The root `pnpm-lock.yaml`, workspace configuration, and `apps/web` app root remain part of the monorepo build. Firebase buildpacks detect pnpm from the root lockfile and use the existing Next.js build script. No service-account JSON or Firebase credential belongs in this repository.
+The repository keeps its root workspace lockfile, while `apps/web/pnpm-lock.yaml` provides the standalone dependency lock required when App Hosting builds with `apps/web` as the configured root directory. Both are generated from the same `apps/web/package.json`; no service-account JSON or Firebase credential belongs in this repository.
 
 Firebase App Hosting rollouts are driven by commits to `main`; they are not represented as a synchronous reusable GitHub Actions job.
 
