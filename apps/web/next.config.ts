@@ -1,10 +1,11 @@
 import type { NextConfig } from "next";
 
+const isFirebaseGenericBuild = process.env.BC_FIREBASE_GENERIC_BUILD === "true";
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  output: "standalone",
-  // Firebase App Hosting builds this app from apps/web and expects the
-  // standalone manifest directly under .next/standalone/.next.
+  output: isFirebaseGenericBuild ? undefined : "standalone",
+  // Keep standalone output rooted at this app when it is built independently.
   outputFileTracingRoot: process.cwd(),
 };
 
