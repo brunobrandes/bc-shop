@@ -63,13 +63,15 @@ jobs:
           AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
           AZURE_FUNCTION_APP_NAME: ${{ vars.AZURE_FUNCTION_APP_NAME }}
         run: |
-          function_state="$(az functionapp show \
+          function_status="$(az resource show \
             --resource-group "$AZURE_RESOURCE_GROUP" \
+            --resource-type Microsoft.Web/sites \
             --name "$AZURE_FUNCTION_APP_NAME" \
-            --query state \
+            --api-version 2024-04-01 \
+            --query '[properties.state, properties.availabilityState, properties.runtimeAvailabilityState] | join(`|`, @)' \
             --output tsv)"
 
-          if [[ "$function_state" != "Running" ]]; then
-            echo "Function App is not running." >&2
+          if [[ "$function_status" != "Running|Normal|Normal" ]]; then
+            echo "Function App is not healthy (state|availability|runtime: $function_status)." >&2
             exit 1
           fi
