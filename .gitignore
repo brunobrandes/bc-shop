@@ -3,6 +3,11 @@ node_modules/
 out/
 coverage/
 *.log
+firebase-debug.log*
+.firebase/
+apps/web/apphosting.local.yaml
+*-firebase-adminsdk-*.json
+service-account*.json
 .DS_Store
 .env*
 !.env.example

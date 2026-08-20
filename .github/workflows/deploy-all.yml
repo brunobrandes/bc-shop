@@ -19,17 +19,9 @@ jobs:
       contents: read
     secrets: inherit
 
-  deploy-web:
-    name: Deploy Web
-    needs: deploy-infra
-    uses: ./.github/workflows/deploy-web.yml
-    permissions:
-      id-token: write
-      contents: read
-
   deploy-functions:
     name: Deploy Functions
-    needs: deploy-web
+    needs: deploy-infra
     uses: ./.github/workflows/deploy-functions.yml
     permissions:
       id-token: write
@@ -51,8 +43,9 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Check web health
+        if: ${{ vars.WEB_BASE_URL != '' }}
         env:
-          AZURE_WEB_APP_NAME: ${{ vars.AZURE_WEB_APP_NAME }}
+          WEB_BASE_URL: ${{ vars.WEB_BASE_URL }}
         run: |
           curl \
             --fail \
@@ -62,7 +55,7 @@ jobs:
             --retry-delay 10 \
             --retry-all-errors \
             --max-time 20 \
-            "https://${AZURE_WEB_APP_NAME}.azurewebsites.net/api/health" \
+            "${WEB_BASE_URL%/}/api/health" \
             >/dev/null
 
       - name: Check Function App state

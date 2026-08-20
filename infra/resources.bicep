@@ -1,35 +1,20 @@
 param location string
-param webAppName string
 param functionAppName string
-
-@secure()
-param atlasApiKey string
-
-@secure()
-param atlasCampaignIdPt string
-
-@secure()
-param atlasCampaignIdEn string
-
-param atlasBaseUrl string
-
-@secure()
-param bcAgentApiKey string
 
 @secure()
 param atlasWebhookSecret string
 
-var planName = 'plan-bc-shop'
+var planName = 'plan-bc-shop-functions-flex'
 var storageAccountName = take('st${uniqueString(subscription().id, resourceGroup().id)}', 24)
+var deploymentContainerName = 'function-releases'
 
 resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: planName
   location: location
-  kind: 'linux'
+  kind: 'functionapp'
   sku: {
-    name: 'P0v4'
-    tier: 'PremiumV4'
-    capacity: 1
+    name: 'FC1'
+    tier: 'FlexConsumption'
   }
   properties: {
     reserved: true
@@ -50,56 +35,16 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   }
 }
 
-resource webApp 'Microsoft.Web/sites@2024-04-01' = {
-  name: webAppName
-  location: location
-  kind: 'app,linux'
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource deploymentContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: deploymentContainerName
   properties: {
-    httpsOnly: true
-    serverFarmId: plan.id
-    siteConfig: {
-      alwaysOn: true
-      appCommandLine: 'node apps/web/server.js'
-      ftpsState: 'Disabled'
-      http20Enabled: true
-      linuxFxVersion: 'NODE|24-lts'
-      minTlsVersion: '1.2'
-      appSettings: [
-        {
-          name: 'NODE_ENV'
-          value: 'production'
-        }
-        {
-          name: 'WEBSITE_NODE_DEFAULT_VERSION'
-          value: '~24'
-        }
-        {
-          name: 'ATLAS_API_KEY'
-          value: atlasApiKey
-        }
-        {
-          name: 'ATLAS_CAMPAIGN_ID_PT'
-          value: atlasCampaignIdPt
-        }
-        {
-          name: 'ATLAS_CAMPAIGN_ID_EN'
-          value: atlasCampaignIdEn
-        }
-        // Compatibility with the current single-campaign server boundary.
-        {
-          name: 'ATLAS_CAMPAIGN_ID'
-          value: atlasCampaignIdPt
-        }
-        {
-          name: 'ATLAS_BASE_URL'
-          value: atlasBaseUrl
-        }
-        {
-          name: 'BC_AGENT_API_KEY'
-          value: bcAgentApiKey
-        }
-      ]
-    }
+    publicAccess: 'None'
   }
 }
 
@@ -109,13 +54,10 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   kind: 'functionapp,linux'
   properties: {
     httpsOnly: true
-    reserved: true
     serverFarmId: plan.id
     siteConfig: {
-      alwaysOn: true
       ftpsState: 'Disabled'
       http20Enabled: true
-      linuxFxVersion: 'node|24'
       minTlsVersion: '1.2'
       appSettings: [
         {
@@ -123,16 +65,8 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
           value: 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
         }
         {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: 'node'
-        }
-        {
-          name: 'WEBSITE_NODE_DEFAULT_VERSION'
-          value: '~24'
+          name: 'DEPLOYMENT_STORAGE_CONNECTION_STRING'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storage.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storage.listKeys().keys[0].value}'
         }
         {
           name: 'ATLAS_WEBHOOK_SECRET'
@@ -140,8 +74,27 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
         }
       ]
     }
+    functionAppConfig: {
+      deployment: {
+        storage: {
+          type: 'blobContainer'
+          value: '${storage.properties.primaryEndpoints.blob}${deploymentContainerName}'
+          authentication: {
+            type: 'StorageAccountConnectionString'
+            storageAccountConnectionStringName: 'DEPLOYMENT_STORAGE_CONNECTION_STRING'
+          }
+        }
+      }
+      runtime: {
+        name: 'node'
+        version: '24'
+      }
+      scaleAndConcurrency: {
+        maximumInstanceCount: 10
+        instanceMemoryMB: 2048
+      }
+    }
   }
 }
 
-output webAppName string = webApp.name
 output functionAppName string = functionApp.name

@@ -16,9 +16,7 @@ set +a
 
 required=(
   AZURE_SUBSCRIPTION_ID AZURE_LOCATION AZURE_RESOURCE_GROUP
-  AZURE_WEB_APP_NAME AZURE_FUNCTION_APP_NAME ATLAS_API_KEY
-  ATLAS_CAMPAIGN_ID_PT ATLAS_CAMPAIGN_ID_EN ATLAS_BASE_URL
-  BC_AGENT_API_KEY ATLAS_WEBHOOK_SECRET
+  AZURE_FUNCTION_APP_NAME ATLAS_WEBHOOK_SECRET
 )
 
 for name in "${required[@]}"; do
@@ -42,13 +40,7 @@ az deployment sub create \
   --parameters \
     location="${AZURE_LOCATION}" \
     resourceGroupName="${AZURE_RESOURCE_GROUP}" \
-    webAppName="${AZURE_WEB_APP_NAME}" \
     functionAppName="${AZURE_FUNCTION_APP_NAME}" \
-    atlasApiKey="${ATLAS_API_KEY}" \
-    atlasCampaignIdPt="${ATLAS_CAMPAIGN_ID_PT}" \
-    atlasCampaignIdEn="${ATLAS_CAMPAIGN_ID_EN}" \
-    atlasBaseUrl="${ATLAS_BASE_URL}" \
-    bcAgentApiKey="${BC_AGENT_API_KEY}" \
     atlasWebhookSecret="${ATLAS_WEBHOOK_SECRET}" \
   --only-show-errors \
   --output none

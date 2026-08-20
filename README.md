@@ -1,6 +1,6 @@
 # BC-Shop
 
-BC-Shop is a pnpm monorepo containing a computer and technology hardware storefront and its independent Azure Functions webhook entry point.
+BC-Shop is a pnpm monorepo containing a computer and technology hardware storefront hosted by Firebase App Hosting and an independent Azure Functions webhook entry point.
 
 ## Stack
 
@@ -68,9 +68,52 @@ The root scripts orchestrate the workspace. Package-specific checks can also be 
 
 There is no authentication, database, persisted cart, checkout, payments, CRM, admin, complete chat, campaign provisioning, webhooks, or AI recommendation logic. Product detail buttons and the cart are visual placeholders. See [the Stage 0 implementation notes](docs/stages/00-foundation.md).
 
-## Azure deployment
+## Deployment architecture
 
-Both workloads use Node.js 24 on Linux. Bicep provisions one resource group, a P0v4 App Service plan, the Next.js Web App, the independent Function App, and the Function runtime storage account. The App Service startup command runs the monorepo standalone entry point at `apps/web/server.js`.
+The two workloads deploy independently:
+
+- `apps/web` runs as a dynamic Next.js application on Firebase App Hosting. SSR, App Router route handlers, and server-side environment variables are preserved.
+- `apps/functions` runs on Azure Functions Flex Consumption FC1. Azure Bicep provisions only its resource group, storage and private deployment container, FC1 plan, and Function App.
+
+There is no Azure App Service, Azure Web App, or Container Apps dependency for the storefront.
+
+### Web — Firebase App Hosting
+
+Use the Firebase console's native GitHub integration, which owns branch-triggered builds and rollouts:
+
+1. Create or select a Firebase project and enable billing required by App Hosting.
+2. Open **App Hosting**, create a backend, and connect `brunobrandes/bc-shop`.
+3. Set the app root to `apps/web` and the live branch to `main`.
+4. Keep automatic rollouts enabled.
+5. Create the following Google Cloud Secret Manager secrets and grant the App Hosting backend access:
+
+   ```text
+   ATLAS_API_KEY
+   ATLAS_CAMPAIGN_ID
+   BC_AGENT_API_KEY
+   ```
+
+   `apps/web/apphosting.yaml` maps these secrets only into the runtime. `ATLAS_BASE_URL` is non-secret configuration. Never use `NEXT_PUBLIC_` for these values.
+
+6. Push to `main`, wait for the Firebase rollout check, and copy the generated App Hosting URL.
+7. Add that URL, including `https://`, as the non-secret GitHub repository variable `WEB_BASE_URL`.
+8. Verify `GET <WEB_BASE_URL>/api/health`.
+
+The root `pnpm-lock.yaml`, workspace configuration, and `apps/web` app root remain part of the monorepo build. Firebase buildpacks detect pnpm from the root lockfile and use the existing Next.js build script. No service-account JSON or Firebase credential belongs in this repository.
+
+Firebase App Hosting rollouts are driven by commits to `main`; they are not represented as a synchronous reusable GitHub Actions job.
+
+### Functions — Azure Flex Consumption
+
+The webhook remains available at:
+
+```text
+POST https://<function-app>.azurewebsites.net/api/webhooks/atlas/call-completed/{secret}
+```
+
+Azure Bicep creates an FC1 Linux Function App using Node.js 24, its runtime storage account, and its deployment package container. `ATLAS_WEBHOOK_SECRET` is the only application secret configured by this Azure deployment.
+
+GitHub Actions authenticates to Azure through OIDC and publishes the compiled Function artifact using One Deploy support in `Azure/functions-action`. No client secret or publish profile is used.
 
 ### Local Azure setup
 
@@ -81,7 +124,7 @@ az login
 cp infra/.env.example infra/.env.local
 ```
 
-Fill `infra/.env.local`, then deploy from the repository root:
+Fill the Function-only values in `infra/.env.local`, then deploy from the repository root:
 
 ```bash
 ./infra/deploy-local.sh
@@ -105,30 +148,27 @@ AZURE_TENANT_ID
 AZURE_SUBSCRIPTION_ID
 AZURE_LOCATION
 AZURE_RESOURCE_GROUP
-AZURE_WEB_APP_NAME
 AZURE_FUNCTION_APP_NAME
+WEB_BASE_URL
 ```
 
-Add these GitHub Actions secrets:
+Add this GitHub Actions secret for Azure:
 
 ```text
-ATLAS_API_KEY
-ATLAS_CAMPAIGN_ID_PT
-ATLAS_CAMPAIGN_ID_EN
-BC_AGENT_API_KEY
 ATLAS_WEBHOOK_SECRET
 ```
+
+The storefront's Atlas and BC agent secrets belong to Firebase/Google Cloud Secret Manager, not GitHub Actions or Azure infrastructure.
 
 No `AZURE_CLIENT_SECRET`, publish profile, or service-principal password is used.
 
 ### Deployment workflows
 
-- `deploy-all.yml` is the recommended POC deployment path. It runs infrastructure, web, Functions, and smoke tests in strict sequence and prevents overlapping full deployments.
+- `deploy-all.yml` deploys Azure infrastructure, then Functions, then checks the Function state. When `WEB_BASE_URL` is configured, it also checks the latest Firebase rollout at `/api/health`. It does not trigger or wait for Firebase.
 - `deploy-infra.yml` is manually triggered. It logs in through OIDC, validates Bicep, and deploys the subscription-scope template.
-- `deploy-web.yml` validates `apps/web` from the root workspace, creates a standalone artifact, and deploys only that artifact to App Service when relevant web files change on `main`.
-- `deploy-functions.yml` validates and compiles `apps/functions` from the root workspace, creates its production artifact, and deploys only that artifact to the Function App when Function files change on `main`.
+- `deploy-functions.yml` validates and compiles `apps/functions` from the root workspace, creates its production artifact, and deploys only that artifact to the FC1 Function App when Function files change on `main`.
 
-The three workload workflows remain independently dispatchable and are also reusable through `workflow_call`. A full deployment follows `Infrastructure → Web → Functions → Smoke Tests`, so an application deployment cannot start before its Azure resources exist.
+The Azure workflows remain independently dispatchable and reusable through `workflow_call`. Their dependency chain is `Function Infrastructure → Function Deploy → Smoke Tests`. Firebase independently observes `main` and reports rollout status through its GitHub check, so the mixed-cloud release is intentionally not presented as atomic.
 
 Validation and build jobs run BC-Shop on Node.js 24. Azure deployment actions may independently report an action-runtime warning until their maintainers publish a newer supported major; that warning does not change the application or Azure runtime version.
 

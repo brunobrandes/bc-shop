@@ -1,0 +1,26 @@
+# Runtime secrets are stored in Google Cloud Secret Manager and resolved by
+# Firebase App Hosting. No secret values belong in this file.
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  - variable: ATLAS_API_KEY
+    secret: ATLAS_API_KEY
+    availability:
+      - RUNTIME
+  - variable: ATLAS_CAMPAIGN_ID
+    secret: ATLAS_CAMPAIGN_ID
+    availability:
+      - RUNTIME
+  - variable: ATLAS_BASE_URL
+    value: https://api.youratlas.com/v1/api
+    availability:
+      - RUNTIME
+  - variable: BC_AGENT_API_KEY
+    secret: BC_AGENT_API_KEY
+    availability:
+      - RUNTIME
