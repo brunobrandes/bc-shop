@@ -8,7 +8,7 @@ or deployment artifacts.
 
 - A Firebase project on the Blaze plan.
 - A Firebase Web App in that project.
-- Firebase Authentication with the Google provider enabled.
+- Firebase Authentication with the Email/Password provider enabled.
 - Firebase CLI 13.15.4 or newer.
 - Permission to manage App Hosting and Secret Manager in the project.
 - The Azure Function App already deployed, or at least its final application
@@ -159,6 +159,21 @@ firebase apphosting:secrets:grantaccess \
 
 This command grants the App Hosting backend service account Secret Manager
 access. Do not create or download a Firebase service-account JSON.
+
+## Provision administrators
+
+Enable the Firebase Authentication Email/Password provider and provision each
+administrator from a trusted operator environment. Every account must:
+
+- use an address present in the server-side `ADMIN_EMAILS` allowlist;
+- be enabled and marked as email verified;
+- receive an initial strong password through a private channel;
+- have its credential rotated or reset when access ownership changes.
+
+Provisioning uses Firebase Admin with Application Default Credentials scoped to
+the Firebase project. Account lists, generated passwords, local provisioning
+scripts, and exported credentials must not be committed or attached to build
+artifacts. The Google identity provider is not part of this access flow.
 
 ## Verify and deploy
 

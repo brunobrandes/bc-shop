@@ -1,5 +1,9 @@
 # Atlas call-completed ingestion
 
+This runtime design implements
+[ADR 0003](decisions/0003-durable-atlas-webhook-ingestion.md) and
+[ADR 0004](decisions/0004-azure-storage-persistence.md).
+
 ## Decision
 
 BC-Shop uses an HTTP receiver plus Azure Storage Queue. This is the smallest model that acknowledges Atlas quickly after a durable handoff and provides native retry and poison-message behavior without Durable Functions.
@@ -22,7 +26,10 @@ Queue worker
   → mark completed
 ```
 
-The inbox envelope contains only `callId`, call result metadata, summary, and transcript. Customer phone, audio URL, and the full raw webhook are not retained there.
+The inbox envelope contains only `callId`, selected call metadata, summary,
+transcript, and a validated HTTP(S) audio reference when Atlas provides one.
+Customer phone and the full raw webhook are not retained. BC-Shop does not copy
+or own the audio binary; Atlas remains the source for the referenced recording.
 
 ## Idempotency and failures
 

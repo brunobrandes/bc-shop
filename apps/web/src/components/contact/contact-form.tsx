@@ -8,7 +8,10 @@ import {
 } from "@/lib/contact/schedule-call";
 import type { SupportedCurrency } from "@/lib/currency/currency";
 
-type Feedback = { type: "success" } | { type: "error"; message: string } | null;
+type Feedback =
+  | { type: "success"; mode: "now" | "scheduled" }
+  | { type: "error"; message: string }
+  | null;
 
 const timezoneLabels = [
   "São Paulo / Brasília (UTC-03:00)",
@@ -75,7 +78,7 @@ export function ContactForm({ currency }: { currency: SupportedCurrency }) {
         return;
       }
       form.reset();
-      setFeedback({ type: "success" });
+      setFeedback({ type: "success", mode });
     } catch {
       setFeedback({
         type: "error",
@@ -90,8 +93,14 @@ export function ContactForm({ currency }: { currency: SupportedCurrency }) {
     return (
       <div className="contact-success" role="status">
         <span aria-hidden="true">✓</span>
-        <h2>Call scheduled!</h2>
-        <p>We will contact you at the requested time.</p>
+        <h2>
+          {feedback.mode === "now" ? "Call requested!" : "Call scheduled!"}
+        </h2>
+        <p>
+          {feedback.mode === "now"
+            ? "We will call you as soon as possible."
+            : "We will contact you at the requested time."}
+        </p>
         <button
           className="button button--accent"
           type="button"

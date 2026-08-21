@@ -108,9 +108,9 @@ Use the Firebase console's native GitHub integration, which owns branch-triggere
 
    `apps/web/apphosting.yaml` maps server credentials only into the runtime. Firebase web configuration is injected during build and runtime and is public after bundling; no server credential uses `NEXT_PUBLIC_`.
 
-6. Enable Firebase Authentication and the Google provider. Add the production App Hosting domain to Firebase Authentication's authorized domains. Firebase Admin uses the App Hosting runtime's Application Default Credentials; do not create a service-account JSON.
+6. Enable Firebase Authentication with the Email/Password provider. Add the production App Hosting domain to Firebase Authentication's authorized domains. Firebase Admin uses the App Hosting runtime's Application Default Credentials; do not create a service-account JSON.
 
-7. Set `ADMIN_EMAILS` to the comma-separated verified Google accounts allowed to access `/admin`. Set `CALL_INSIGHTS_API_BASE_URL` to `https://<function-app>.azurewebsites.net/api/internal/call-insights`.
+7. Set `ADMIN_EMAILS` to the comma-separated verified Firebase accounts allowed to access `/admin`. Set `CALL_INSIGHTS_API_BASE_URL` to `https://<function-app>.azurewebsites.net/api/internal/call-insights`.
 8. Use the same independently generated `BC_ADMIN_API_KEY` value in Firebase Secret Manager and the GitHub Actions secret described below.
 9. Push to `main`, wait for the Firebase rollout check, and copy the generated App Hosting URL.
 10. Add that URL, including `https://`, as the non-secret GitHub repository variable `WEB_BASE_URL` and verify `GET <WEB_BASE_URL>/api/health`.
@@ -192,3 +192,6 @@ The Azure workflows remain independently dispatchable and reusable through `work
 Validation and build jobs run BC-Shop on Node.js 24. Azure deployment actions may independently report an action-runtime warning until their maintainers publish a newer supported major; that warning does not change the application or Azure runtime version.
 
 Never commit real values from `.env.local`, `local.settings.json`, Azure credentials, Atlas credentials, webhook secrets, or publish profiles.
+
+Architecture decisions and their tradeoffs are indexed in
+[Architecture](docs/architecture/README.md).
